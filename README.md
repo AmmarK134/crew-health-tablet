@@ -95,7 +95,7 @@ The reasons for each design choice, with sources, are in `docs/design-notes.md`.
 
 ## Checks that were run
 
-- `npm run check` taps through every action in a real browser (four tablets and a watch) and checks the server's state after each: 54 checks, all passing on 15 November 2026 against `backend` at `b123126`, on Linux with headless Chrome.
+- `npm run check` taps through every action in a real browser (four tablets and a watch) and checks the server's state after each: 55 checks, all passing on 15 November 2026 against `backend` at `b123126`, on Linux with headless Chrome.
 - An automated accessibility scan (axe-core, WCAG 2.0 to 2.2 levels A and AA) on 10 screens in both themes: no violations. An automated scan cannot prove full conformance.
 - No text is smaller than 16 px. Main actions are at least 56 px high, emergency actions at least 76 px.
 
@@ -122,7 +122,7 @@ npm run build      # rebuilds dist/, which run.py serves
 | `src/views/` | One file per view: My health, Emergency, Crew overview, Radiation exposure, the rest |
 | `src/charts.tsx`, `src/ui.tsx` | Charts and shared controls |
 | `src/styles/tokens.css` | Colours, type and sizes, from the team's style guide |
-| `scripts/walkthrough.mjs` | The 54-check walk-through |
+| `scripts/walkthrough.mjs` | The 55-check walk-through |
 | `docs/design-notes.md` | Design decisions, sources and what is not verified |
 
 ## Credits

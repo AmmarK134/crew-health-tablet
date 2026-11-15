@@ -92,6 +92,12 @@ await openDemo(lena);
 check(await lena.evaluate(() => !!document.querySelector('.sheet')), 'pressing D opens the demo controls');
 await openDemo(lena);
 check(await lena.evaluate(() => !document.querySelector('.sheet')), 'pressing D again closes them');
+// A keyboard set to another language: the physical D key types another letter (here Russian "в").
+await lena.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'в', code: 'KeyD', bubbles: true })));
+await sleep(400);
+check(await lena.evaluate(() => !!document.querySelector('.sheet')), 'the D key opens them on a keyboard set to another language');
+await lena.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'в', code: 'KeyD', bubbles: true })));
+await sleep(400);
 
 // ---- check-ins and manual entry
 await tap(lena, 'Check-ins', { within: '.dock-item' });

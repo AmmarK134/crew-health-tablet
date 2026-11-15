@@ -57,9 +57,11 @@ function Tablet() {
   useEffect(() => applyDisplay(theme, size), [theme, size]);
 
   // The demo controls are hidden from the tablet screen: D opens and closes them (not while typing).
+  // It listens for the physical D key (e.code), so it also works with keyboards set to another language,
+  // where that key types a different letter, and on the window in the capture phase, before anything else.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'd' && e.key !== 'D') return;
+      if (e.code !== 'KeyD' && e.key !== 'd' && e.key !== 'D') return;
       if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
       const t = e.target as HTMLElement | null;
       const tag = (t && t.tagName ? t.tagName : '').toLowerCase();
@@ -67,8 +69,8 @@ function Tablet() {
       e.preventDefault();
       setSheet((v) => (v === 'demo' ? null : 'demo'));
     };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, []);
 
   // An emergency opens by itself, over whatever was open. A caution or an advisory never moves the person.
