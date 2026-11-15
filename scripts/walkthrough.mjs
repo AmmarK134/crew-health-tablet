@@ -104,6 +104,10 @@ check(await lena.evaluate(() => !!document.querySelector('.sheet')), 'the D key 
 await lena.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'в', code: 'KeyD', bubbles: true })));
 await sleep(400);
 
+// ---- mock AI insight: a live summary from the person's own readings
+const ravisInsight = await ravi.evaluate(() => document.querySelector('.ai .ai-answer')?.textContent || '');
+check(/Sleep: 5\.5 hours, below your usual/.test(ravisInsight) && /3 nights in a row/.test(ravisInsight), "the AI insight summarises Ravi's own readings (sleep below his usual range for 3 nights)");
+
 // ---- check-ins and manual entry
 await tap(lena, 'Check-ins', { within: '.dock-item' });
 await tap(lena, 'Reaction-time test');
@@ -155,6 +159,13 @@ await startScenario(lena);
 S = await state();
 check(S.heart && S.heart.stage === 'caution' && S.advisories.length === 1, 'the heart scenario issues a caution and an advisory');
 check(S.health.lena.caution && S.health.lena.caution.measures.includes('stShift'), 'the caution covers Lena\'s wearable ECG');
+await tap(lena, 'What could this lead to?', { within: '.ai .chip' });
+await sleep(900);
+check(await lena.evaluate(() => Array.from(document.querySelectorAll('.ai .ai-answer')).pop().textContent.includes('12-lead heart reading')), 'asked what it could lead to, the AI insight names the deciding test with its source');
+await lena.type('.ai-ask input', 'what is my percent chance of a heart attack');
+await lena.keyboard.press('Enter');
+await sleep(900);
+check(await lena.evaluate(() => Array.from(document.querySelectorAll('.ai .ai-answer')).pop().textContent.includes('I do not put a percentage')), 'asked for a percentage, the AI insight explains why it gives none');
 await tap(lena, 'No', { exact: true, within: '.answer' });
 S = await state();
 check(S.heart?.stage === 'monitored' && S.heart?.quick_check === 'no', 'check-in "No" sets the result to monitored');
@@ -181,6 +192,7 @@ await tap(sam, 'Lena', { within: '.row--person' });
 await sleep(600);
 S = await state();
 check(!!S.heart.seen_at, 'opening the evidence records when the crew doctor saw it');
+check(await sam.evaluate(() => Array.from(document.querySelectorAll('.ai')).some((a) => a.textContent.includes('Lena this week') && a.textContent.includes('Mood and stress are private'))), "the crew doctor's evidence has a doctor version of the AI insight, without private data");
 await tap(sam, 'Run ACTIS blood clot test');
 S = await state();
 check(S.heart.clot_test === true && S.heart.model.criteria.some((c) => c.basis === 'actis' && c.met === false), 'the ACTIS blood clot test is recorded (mock result)');

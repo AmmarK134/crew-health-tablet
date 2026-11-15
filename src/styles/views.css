@@ -1925,3 +1925,102 @@ button.alert--row:active {
   padding: 0.25rem 0.875rem;
   font-size: 1rem;
 }
+
+/* ------------------------------------------------------------------ mock AI insight */
+.ai {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.detail .ai {
+  margin-top: var(--s2);
+  border-color: var(--edge);
+}
+.ai-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.ai-head h3 {
+  margin-right: auto;
+}
+.ai-answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--edge);
+  background: var(--raised);
+}
+.ai-answer-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s3);
+  font: var(--t-label);
+}
+.ai-answer-title {
+  font-weight: 650;
+  color: var(--ink);
+}
+.ai-lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding-left: 1.125rem;
+  list-style: disc;
+}
+.ai-lines li::marker {
+  color: var(--ink-2);
+}
+.ai-turn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+.ai-q {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  max-width: 85%;
+  padding: var(--s2) var(--s4);
+  border-radius: 1rem 1rem 0.25rem 1rem;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  font-weight: 600;
+}
+.ai-q .icon {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--ink-2);
+}
+.ai-thinking {
+  color: var(--ink-2);
+  font-style: italic;
+  animation: ai-pulse 1.2s ease-in-out infinite;
+}
+@keyframes ai-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-thinking {
+    animation: none;
+  }
+}
+.ai-ask {
+  display: flex;
+  gap: var(--s3);
+}
+.ai-ask .input {
+  flex: 1;
+  min-width: 0;
+}
+.ai-foot {
+  font: var(--t-label);
+  color: var(--ink-2);
+}

@@ -24,6 +24,7 @@ import { heartOnFor, myStatus, orderIndicators, radAlert, speOn, stormDose } fro
 import { AmountLines, Button, ClassTag, Countdown, Fact, LinkPill, PlainTag, RangePill, Scroll, Seg, SourceChip, StateTag, TrendLine, revealDetail } from '../ui';
 import { rangeInfo, trendWords, usualSentence } from '../range';
 import type { ViewId } from './Chrome';
+import { AiInsight } from './Insight';
 
 export type Selection = { kind: 'ind'; key: string } | { kind: 'heart' };
 
@@ -228,6 +229,8 @@ export function MyHealth({ S, rad, me, sel, setSel, send, go }: Props) {
             </button>
           )}
         </section>
+
+        <AiInsight S={S} rad={rad} pid={me} audience="self" />
 
         <section className="panel" aria-label="Today's check-ins">
           <button type="button" className="row row--link" onClick={() => go('checkins')}>

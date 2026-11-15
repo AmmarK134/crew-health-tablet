@@ -71,6 +71,7 @@ Before you start: open Lena's watch (`/?device=cuff&as=lena`) in its own tab and
 - **Demo controls off the screen**: press D, or hold the clock.
 - **The watch** has screens now: Alert (opens by itself and vibrates), Home with Get crew doctor (on Sam's watch: who needs the crew doctor), Vitals against the person's own usual range, SOS held for 3 seconds, one-tap check-ins, and career radiation dose with the Earth link.
 - **Sound.** Lena's watch plays her alarm (and vibrates on an Android phone) when the heart check-in reaches it, repeating up to 3 times until she answers. Sam's tablet and watch play "a warning has been issued" once each time the crew doctor is alerted, including when the demo switches to Sam's tablet while he is alerted. The quiet advisory before that stays silent. Browsers play sound only after one tap on the page, so tap **Turn sound on** under the watch before the demo. Sound can be turned off under Display in the demo controls.
+- **Mock AI insight**, under each crew member's indicators (about their own data) and in the crew doctor's view for each person (a doctor version that never uses mood or stress). A live summary of the week, suggested questions ("What could this lead to?", "Is this normal in space?", "What else could explain this?", "What should I check next?") and a box to type a question. Answers are scripted from the person's demo readings and the sources already in the app, each with its source, in the style of evidence-based clinical assistants. Following the team's rule, it gives no diagnosis and no made-up percentages; asked for one, it explains why. Labelled "Mock AI".
 - **Canadian content**: the CSA Bio-Monitor shirt as the wearable that takes the readings, the CSA Radi-N/Radi-N2 neutron measurements in the station radiation view, and the ACTIS test for the crew doctor. See below.
 
 ## Canadian content and local impact
@@ -98,7 +99,7 @@ The reasons for each design choice, with sources, are in `docs/design-notes.md`.
 
 ## Checks that were run
 
-- `npm run check` taps through every action in a real browser (four tablets and a watch) and checks the server's state after each: 60 checks, all passing on 15 November 2026 against `backend` at `b123126`, on Linux with headless Chrome.
+- `npm run check` taps through every action in a real browser (four tablets and a watch) and checks the server's state after each: 64 checks, all passing on 15 November 2026 against `backend` at `b123126`, on Linux with headless Chrome.
 - An automated accessibility scan (axe-core, WCAG 2.0 to 2.2 levels A and AA) on 10 screens in both themes: no violations. An automated scan cannot prove full conformance.
 - No text is smaller than 16 px. Main actions are at least 56 px high, emergency actions at least 76 px.
 
@@ -119,13 +120,14 @@ npm run build      # rebuilds dist/, which run.py serves
 | `run.py`, `start.bat` | Starts the team's server with this interface in front of it |
 | `dist/` | The built interface, ready to serve |
 | `src/api.ts` | The server's endpoints and the shapes of what it sends |
+| `src/insight.ts`, `src/views/Insight.tsx` | The mock AI insight: scripted, evidence-cited answers from a person's readings |
 | `src/measures.ts` | Turns the server's per-person measures into indicators, with why each matters and how it is measured |
 | `src/store.ts` | Asks the server for the state once a second; sends actions |
 | `src/logic.ts`, `src/content.ts` | What each tablet shows, and the words and sources (carried over from the original `static/app.js`) |
 | `src/views/` | One file per view: My health, Emergency, Crew overview, Radiation exposure, the rest |
 | `src/charts.tsx`, `src/ui.tsx` | Charts and shared controls |
 | `src/styles/tokens.css` | Colours, type and sizes, from the team's style guide |
-| `scripts/walkthrough.mjs` | The 60-check walk-through |
+| `scripts/walkthrough.mjs` | The 64-check walk-through |
 | `docs/design-notes.md` | Design decisions, sources and what is not verified |
 
 ## Credits

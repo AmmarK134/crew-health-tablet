@@ -20,6 +20,7 @@ import { Button, ClassTag, Countdown, Dialog, Fact, PlainTag, RangePill, ReasonC
 import type { ViewId } from './Chrome';
 import { outsideSide, rangeInfo, type Side } from '../range';
 import { indicatorsFor } from '../measures';
+import { AiInsight } from './Insight';
 
 interface Props {
   S: CrewState;
@@ -186,7 +187,7 @@ export function CrewOverview({ S, rad, me, selPerson, setSelPerson, send, go }: 
       {showEvidence ? (
         <div className="pane">
           <Scroll>
-            <Evidence S={S} send={send} />
+            <Evidence S={S} rad={rad} send={send} />
           </Scroll>
           <DecideBar S={S} send={send} go={go} />
         </div>
@@ -214,7 +215,7 @@ function Met({ c }: { c: Criterion }) {
   );
 }
 
-function Evidence({ S, send }: { S: CrewState; send: Props['send'] }) {
+function Evidence({ S, rad, send }: { S: CrewState; rad: Radiation | null; send: Props['send'] }) {
   const h = S.heart!;
   const m = h.model;
   const t = S.track;
@@ -298,6 +299,7 @@ function Evidence({ S, send }: { S: CrewState; send: Props['send'] }) {
         <span className="num">{Math.max(0, t.alerts - t.confirmed - t.not_confirmed)}</span> outcome not yet recorded
       </Fact>
       <p className="glossary">{m.label}. Values shaped by published in-flight data where cited.</p>
+      <AiInsight S={S} rad={rad} pid="lena" audience="doctor" />
     </section>
   );
 }
@@ -462,6 +464,7 @@ function PersonRecord({ S, rad, pid }: { S: CrewState; rad: Radiation | null; pi
       <p className="small-line">
         <Icon name="lock" /> Wellbeing: check-in completed today. Scores and trends only; journal entries are never available.
       </p>
+      <AiInsight S={S} rad={rad} pid={pid} audience="doctor" />
       {pid === 'lena' && <Labs />}
     </section>
   );
