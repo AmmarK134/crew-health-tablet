@@ -32,7 +32,6 @@ import { Icon, type IconName } from '../icons';
 import { heartOnFor, myAction, myStatus, sosCancelLeft, speOn } from '../logic';
 import { CHECKIN_DEFS, cautionFor, checkinsDone, checkinsFor, indicatorsFor } from '../measures';
 import { rangeInfo } from '../range';
-import { playSound, stopSound, usePageVisible, vibrate } from '../sound';
 import { act, applyDisplay, initialPerson, initialSize, initialTheme, serverNow, startPolling, useShared, useTick } from '../store';
 import { ClassTag } from '../ui';
 
@@ -99,7 +98,6 @@ export function Cuff() {
   useEffect(() => {
     if (key && key !== seen.current) {
       setBuzz(true);
-      vibrate([200, 100, 200]);
       setScreen('alert');
       const t = window.setTimeout(() => setBuzz(false), 900);
       seen.current = key;
@@ -113,29 +111,6 @@ export function Cuff() {
   const current: ScreenId = screens.includes(screen) ? screen : 'home';
   const at = screens.indexOf(current);
   const go = (step: number) => setScreen(screens[(at + step + screens.length) % screens.length]);
-
-  // Lena's alarm: while the heart check-in waits for her answer and her watch is on screen showing the alert.
-  // It stops when she answers, when the watch tab is left (another tab, another page) or when she swipes away
-  // from the alert, and starts again when she comes back. At most 3 plays, 4 seconds apart, each time.
-  const visible = usePageVisible();
-  const asking = !!S && me === 'lena' && heartOnFor(S, me) && S.heart!.stage === 'caution' && !S.heart!.quick_check;
-  const ringing = asking && visible && current === 'alert' ? S!.heart!.id : null;
-  useEffect(() => {
-    if (ringing == null) return;
-    playSound('lena', { times: 3, gap: 4000, onEach: () => vibrate([400, 200, 400, 200, 400]) });
-    return () => stopSound('lena');
-  }, [ringing]);
-
-  // Sam's warning: once, the first time his watch is on screen while he is alerted. No repeats.
-  const samDone = useRef(false);
-  const samAlerted = !!S && me === 'sam' && !!S.doctor_woken && S.doctor_woken.by !== 'sam';
-  useEffect(() => {
-    if (samAlerted && visible && !samDone.current) {
-      samDone.current = true;
-      playSound('sam', { maxWait: 10000, onEach: () => vibrate([300, 150, 300]) });
-    }
-    if (!visible) stopSound('sam');
-  }, [samAlerted, visible]);
 
   const send: Send = (type, extra) => void act(type, me, extra);
 
