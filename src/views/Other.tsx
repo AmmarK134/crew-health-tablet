@@ -6,16 +6,18 @@ import { Ring } from '../charts';
 import { DELAY_NOTE, DELAY_TEXT, MODE_NAME, NAMES, PEOPLE, TABLET_ROLE } from '../content';
 import { clock, day } from '../format';
 import { Icon } from '../icons';
-import { loadStorms, type Size, type Theme } from '../store';
+import { CHECKIN_DEFS, checkinsFor } from '../measures';
+import { act, loadStorms, type Size, type Theme } from '../store';
 import { Button, ClassTag, PlainTag, Scroll, Seg, Sheet } from '../ui';
 
 type Send = (type: string, extra?: Record<string, unknown>) => void;
 
 // ------------------------------------------------------------------ check-ins
 
-export function CheckIns({ S, send }: { S: CrewState; send: Send }) {
-  const defs = S.checkin_defs;
-  const done = defs.filter((d) => S.checkins[d.id]).length;
+export function CheckIns({ S, me, send }: { S: CrewState; me: PersonId; send: Send }) {
+  const defs = CHECKIN_DEFS;
+  const mine = checkinsFor(S, me);
+  const done = defs.filter((d) => mine[d.id]).length;
   const streak = done === defs.length ? S.streak + 1 : S.streak;
   return (
     <div className="view view--wide-left">
@@ -23,12 +25,19 @@ export function CheckIns({ S, send }: { S: CrewState; send: Send }) {
         <section className="panel" aria-label="Today's check-ins">
           <div className="panel-head">
             <h3>Today</h3>
-            <span className="muted">Tap a check-in when you have done it</span>
+            <span className="muted">Tap a check-in to enter it</span>
           </div>
           {defs.map((d) => {
-            const on = !!S.checkins[d.id];
+            const on = !!mine[d.id];
             return (
-              <button key={d.id} type="button" className="row row--check" aria-pressed={on} onClick={() => send('checkin', { id: d.id })}>
+              <button
+                key={d.id}
+                type="button"
+                className="row row--check"
+                aria-pressed={on}
+                aria-disabled={on}
+                onClick={() => !on && send('checkin', { id: d.id })}
+              >
                 <span className={`box${on ? ' is-on' : ''}`}>{on && <Icon name="check" />}</span>
                 <span>
                   <span className="row-title">{d.label}</span>
@@ -49,7 +58,7 @@ export function CheckIns({ S, send }: { S: CrewState; send: Send }) {
             </p>
             <p className="muted">Credit is for completing check-ins, never for the results.</p>
             <p className="small-line">
-              <Icon name="lock" /> Mood entries are private to you. The crew doctor sees that you checked in, never what you wrote.
+              <Icon name="lock" /> Mood and stress entries are private to you. The crew doctor sees that you checked in, never what you wrote.
             </p>
           </div>
         </section>
@@ -63,7 +72,7 @@ export function CheckIns({ S, send }: { S: CrewState; send: Send }) {
 export function DataSharing({ S, me }: { S: CrewState; me: PersonId }) {
   const log = (S.access_log[me] || []).slice(0, 10);
   const e = S.emergency;
-  const sharedNow = !!e && e.kind === 'heart' && e.patient === me;
+  const sharedNow = !!e && (e.kind === 'heart' || e.kind === 'sos') && e.patient === me;
   return (
     <div className="view view--even">
       <Scroll>
@@ -97,7 +106,7 @@ export function DataSharing({ S, me }: { S: CrewState; me: PersonId }) {
             <div className="fact">
               <div className="label">Never shared</div>
               <ul className="todo">
-                <li>Mood check-ins</li>
+                <li>Mood and stress check-ins</li>
                 <li>Your journal</li>
               </ul>
             </div>
@@ -235,6 +244,14 @@ export function DemoSheet({ S, me, storms, theme, size, setMe, setTheme, setSize
   return (
     <Sheet title="Demo controls" onClose={onClose}>
       <div className="sheet-section">
+        <p className="demo-hint">
+          <Icon name="info" />
+          <span>
+            Hidden from the tablet screen. Press <kbd>D</kbd> to open or close, or hold the clock for 2 seconds on a touch screen.
+          </span>
+        </p>
+      </div>
+      <div className="sheet-section">
         <h3>Whose tablet this is</h3>
         <div className="people">
           {PEOPLE.map((p) => (
@@ -259,9 +276,36 @@ export function DemoSheet({ S, me, storms, theme, size, setMe, setTheme, setSize
       <div className="sheet-section">
         <h3>Heart scenario</h3>
         <Button kind="primary" block left icon="ecg_heart" disabled={busy} onClick={() => run('demo_start_s2')}>
-          Issue a low-confidence heart result for Lena
+          Raise the heart caution for Lena
         </Button>
-        <p>{busy ? 'A scenario is already running. Reset everything to start again.' : 'Lena sees a caution and the crew doctor a quiet advisory. Nobody else is told.'}</p>
+        <p>
+          {busy
+            ? 'A scenario is already running. Reset everything to start again.'
+            : 'Lena sees a caution and a check-in; the crew doctor gets a quiet advisory. Nobody else is told. From the crew doctor’s tablet, Escalate turns it into a crew-wide emergency.'}
+        </p>
+      </div>
+
+      <div className="sheet-section">
+        <h3>SOS from a crew member</h3>
+        <p>Declares a crew-wide emergency with that person’s name and location, as if they pressed SOS on their own tablet.</p>
+        <div className="chips">
+          {PEOPLE.map((p) => (
+            <button
+              key={p}
+              type="button"
+              className="chip"
+              disabled={!!S.emergency}
+              onClick={() => {
+                void act('sos', p);
+                onClose();
+              }}
+            >
+              <Icon name="sos" />
+              {NAMES[p]}
+            </button>
+          ))}
+        </div>
+        {S.emergency && <p>An emergency is already active. End it or reset everything first.</p>}
       </div>
 
       <div className="sheet-section">
@@ -323,7 +367,7 @@ export function DemoSheet({ S, me, storms, theme, size, setMe, setTheme, setSize
         </a>
         <a className="btn btn--secondary btn--block btn--left" href={`?device=cuff&as=${me}`}>
           <Icon name="watch" />
-          <span>Wrist cuff concept for {NAMES[me]}</span>
+          <span>Watch for {NAMES[me]}</span>
         </a>
       </div>
 

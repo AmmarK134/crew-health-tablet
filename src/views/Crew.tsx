@@ -1,7 +1,7 @@
 // Crew overview: the crew doctor's view. Who needs attention first, what supports each result,
 // and a record of every decision. The human decides; the system only alerts.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { CrewState, Criterion, PersonId, Radiation } from '../api';
 import {
   DECIDE_REASONS,
@@ -19,6 +19,7 @@ import { personStatus, speOn, stormDose, type PersonStatus } from '../logic';
 import { Button, ClassTag, Countdown, Dialog, Fact, PlainTag, RangePill, ReasonChips, Scroll, SourceChip, StateTag, revealDetail } from '../ui';
 import type { ViewId } from './Chrome';
 import { outsideSide, rangeInfo, type Side } from '../range';
+import { indicatorsFor } from '../measures';
 
 interface Props {
   S: CrewState;
@@ -74,7 +75,7 @@ export function CrewOverview({ S, rad, me, selPerson, setSelPerson, send, go }: 
                 </span>
                 <span className="row-sub">{c.st.reason}</span>
               </span>
-              <StatusTag st={c.st} outside={outsideSide(S.indicators[c.id] || [])} />
+              <StatusTag st={c.st} outside={outsideSide(indicatorsFor(S, c.id))} />
               <Icon name="chevron_right" className="row-chevron" />
             </button>
           ))}
@@ -95,7 +96,7 @@ export function CrewOverview({ S, rad, me, selPerson, setSelPerson, send, go }: 
               </div>
               <p>{a.text}</p>
               <p className="muted">
-                {NAMES[a.person]} has also been told. Quick check answer: {quick}.
+                {NAMES[a.person]} has also been told. Check-in answer: {quick}.
               </p>
               <div>
                 <Button
@@ -217,7 +218,13 @@ function Evidence({ S, send }: { S: CrewState; send: Props['send'] }) {
   const h = S.heart!;
   const m = h.model;
   const t = S.track;
-  const BASIS: Record<string, keyof typeof SRC> = { rule: 'rule', norsk: 'norsk', symptom: 'symptom', thygesen: 'thygesen' };
+  const BASIS: Record<string, keyof typeof SRC> = { rule: 'rule', norsk: 'norsk', symptom: 'symptom', thygesen: 'thygesen', actis: 'actis' };
+  // Opening the evidence tells Lena when the crew doctor has seen it (crew/engine.py, "doctor_seen").
+  useEffect(() => {
+    if (!h.seen_at) send('doctor_seen');
+    // Once per heart alert.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [h.id]);
   return (
     <section className="panel panel-pad detail enter" aria-label="Lena: possible heart problem">
       <header className="detail-head">
@@ -228,7 +235,7 @@ function Evidence({ S, send }: { S: CrewState; send: Props['send'] }) {
       <p className="small-line">
         <Icon name="schedule" />
         <span>
-          {m.level === 'criterion_met' ? '12-lead criterion met' : 'Screening signal (chest strap)'}. Issued{' '}
+          {m.level === 'criterion_met' ? '12-lead criterion met' : 'Screening signal (wearable ECG)'}. Issued{' '}
           <span className="num">{clock(h.issued_at)}</span>
           {h.reading_at ? (
             <>
@@ -252,12 +259,33 @@ function Evidence({ S, send }: { S: CrewState; send: Props['send'] }) {
         ))}
       </ul>
 
-      {!h.heart_reading && h.stage !== 'emergency' && (
-        <div>
-          <Button icon="ecg_heart" onClick={() => send('heart_reading')}>
-            Record Heart reading (12-lead heart tracing)
-          </Button>
+      {h.stage !== 'emergency' && (!h.heart_reading || !h.clot_test) && (
+        <div className="btn-row">
+          {!h.heart_reading && (
+            <Button icon="ecg_heart" onClick={() => send('heart_reading')}>
+              Record heart reading (12-lead heart tracing)
+            </Button>
+          )}
+          {!h.clot_test && (
+            <Button icon="science" onClick={() => send('clot_test')}>
+              Run ACTIS blood clot test
+            </Button>
+          )}
         </div>
+      )}
+      {!h.clot_test && h.stage !== 'emergency' && (
+        <p className="small-line">
+          <span>
+            ACTIS, a Canadian Space Agency device on Crew-13, measures D-dimer in about 15 minutes to rule out a blood clot, another cause of chest
+            pain. Result is mock.
+          </span>{' '}
+          <SourceChip source={SRC.actis} />
+        </p>
+      )}
+      {h.clot_test && (
+        <p className="small-line">
+          <Icon name="check_circle" /> ACTIS blood clot test taken at <span className="num">{clock(h.clot_at)}</span> (mock result).
+        </p>
       )}
 
       <div className="facts">
@@ -381,13 +409,13 @@ function DecideDialog({
 }
 
 function PersonRecord({ S, rad, pid }: { S: CrewState; rad: Radiation | null; pid: PersonId }) {
-  const inds = (S.indicators[pid] || []).filter((i) => !i.private);
+  const inds = indicatorsFor(S, pid).filter((i) => !i.private);
   const storm = stormDose(rad);
   return (
     <section className="panel panel-pad detail enter" aria-label={NAMES[pid]}>
       <header className="detail-head">
         <h2>{NAMES[pid]}</h2>
-        <StatusTag st={personStatus(S, rad, pid)} outside={outsideSide(S.indicators[pid] || [])} />
+        <StatusTag st={personStatus(S, rad, pid)} outside={outsideSide(indicatorsFor(S, pid))} />
       </header>
       <div className="table-wrap">
         <table className="table">
@@ -411,7 +439,7 @@ function PersonRecord({ S, rad, pid }: { S: CrewState; rad: Radiation | null; pi
                     </>
                   )}
                 </td>
-                <td>{i.usual}</td>
+                <td>{i.refText || i.usual}</td>
               </tr>
             ))}
             {rad && (

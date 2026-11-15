@@ -31,6 +31,66 @@ export interface Indicator {
   src: string;
   private?: boolean;
   preventive?: string;
+  /** Source chip for "How it is measured" (the wearable). */
+  measured_src?: string;
+  /** The check-in id the server uses when this is entered by the person (hydration, mood, stress, reactionTime). */
+  entry?: string;
+  /** Shown instead of "Usual …" when the measure is read against a plan rather than a usual range. */
+  refText?: string;
+  /** For a stale reading: the time of the last reading, on the server's clock (seconds). */
+  lastAt?: number;
+}
+
+// ---------------------------------------------------------------- per-person health, in the design team's shape
+// (crew/engine.py, _health(); app/health-caution.html, crew-data.js). The tablet turns this into Indicators.
+
+export interface Range {
+  low: number;
+  high: number;
+}
+
+export type ReadingValue = number | string | { systolic: number; diastolic: number } | null;
+
+export interface Measure {
+  unit: string;
+  usualRange?: Range | { systolic: Range; diastolic: Range };
+  plan?: number;
+  publishedLine?: number;
+  usual?: string;
+  medicalLimit?: unknown;
+  staleAfterMinutes?: number | null;
+  stateSetByHand?: string;
+  source: string;
+  trend: { direction: 'up' | 'down' | 'flat'; words: string };
+  readings: { day: number; value: ReadingValue; time?: string }[];
+}
+
+export interface HealthCaution {
+  class: string;
+  name: string;
+  raised: string;
+  answerBy: string;
+  answered: string | null;
+  answeredAt: string | null;
+  seenAt: string | null;
+  measures: string[];
+  reasons: string;
+  checkIn: {
+    details: string;
+    question: string;
+    symptom: string;
+    afterYes: string;
+    outcomes: Record<string, string>;
+  };
+}
+
+export interface PersonHealth {
+  clock: string;
+  person: { name: string };
+  crewDoctor: { name: string; pronoun: string };
+  earthLink: string;
+  measures: Record<string, Measure>;
+  caution: HealthCaution | null;
 }
 
 export interface Criterion {
@@ -75,6 +135,11 @@ export interface Heart {
   countdown_by?: string;
   reading_at?: number;
   outcome: string | null;
+  answered_at?: number | null;
+  seen_at?: number;
+  clot_test?: boolean;
+  clot_at?: number;
+  unanswered_alerted?: number;
 }
 
 export interface Advisory {
@@ -106,9 +171,11 @@ export interface EarthReport {
 
 export type RosterStatus = 'alerted' | 'acknowledged' | 'on_the_way' | 'on_scene' | 'patient' | 'in_shelter';
 
+export type EmergencyKind = 'heart' | 'spe' | 'sos';
+
 export interface Emergency {
   id: number;
-  kind: 'heart' | 'spe';
+  kind: EmergencyKind;
   patient: PersonId | null;
   what: string;
   where: string;
@@ -157,7 +224,8 @@ export interface CrewState {
   access_log: Record<string, AccessEntry[]>;
   access_closed_notice: { at: number; person: PersonId; shared_with: string; data: string } | null;
   doctor_woken: { by: PersonId; at: number; why: string } | null;
-  checkins: Record<string, boolean>;
+  /** Entries made today, per person: hydration, mood, stress, reactionTime. */
+  checkins: Record<PersonId, Record<string, boolean>>;
   streak: number;
   track: { alerts: number; confirmed: number; not_confirmed: number };
   events: { at: number; text: string }[];
@@ -165,8 +233,7 @@ export interface CrewState {
   one_way_s: number;
   countdown_s: number;
   treatment_mock: string[];
-  checkin_defs: { id: string; label: string; sub: string }[];
-  indicators: Record<PersonId, Indicator[]>;
+  health: Record<PersonId, PersonHealth>;
   summary: Record<string, { state: string; reason: string; missing?: string }>;
 }
 
@@ -215,11 +282,25 @@ export interface Radiation {
     severity: 'amber' | 'red';
     where: string;
   };
-  breakdown: null | { neutrons_share: number; note: string };
+  breakdown: null | NeutronBreakdown;
   actions: { text: string; who: string }[];
   whoActs: string;
   source: 'real' | 'published';
   assumptions: string[];
+}
+
+/** Station dose by particle type. With the CSA Radi-N/Radi-N2 data loaded, the neutron part is measured. */
+export interface NeutronBreakdown {
+  neutrons_share: number;
+  note: string;
+  neutron_msv_per_day?: number;
+  charged_msv_per_day?: number;
+  sessions?: number;
+  range_usv_per_day?: [number, number];
+  first?: string;
+  last?: string;
+  added_to_total?: boolean;
+  rows?: { start: string; days: number; detector: string; usv: number; usv_per_day: number; experiment: string; mission: string }[];
 }
 
 export interface StormEvent {

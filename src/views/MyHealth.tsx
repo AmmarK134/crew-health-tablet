@@ -4,7 +4,9 @@ import { useState } from 'react';
 import type { CrewState, Indicator, PersonId, Radiation } from '../api';
 import { BandChart, BeatShape, Spark } from '../charts';
 import {
-  CHANGED,
+  AFTER_YES,
+  ANSWER_WINDOW_S,
+  CHECK_QUESTION,
   GLOSSARY,
   HEART_STAGE_TEXT,
   INDICATOR_ICON,
@@ -15,7 +17,8 @@ import {
   SHELTER_WORD,
   SRC,
 } from '../content';
-import { clock, dose } from '../format';
+import { clock, dose, duration } from '../format';
+import { CHECKIN_DEFS, cautionFor, checkinsDone, indicatorsFor } from '../measures';
 import { Icon } from '../icons';
 import { heartOnFor, myStatus, orderIndicators, radAlert, speOn, stormDose } from '../logic';
 import { AmountLines, Button, ClassTag, Countdown, Fact, LinkPill, PlainTag, RangePill, Scroll, Seg, SourceChip, StateTag, TrendLine, revealDetail } from '../ui';
@@ -36,20 +39,35 @@ interface Props {
 
 const isNumber = (v: string | null) => !!v && /^[\d.,/\s+\-−]+$/.test(v);
 
-/** "Usual 52–60 bpm": the unit follows the range when the range is made of numbers. */
+/** "Usual 52–60 bpm": the unit follows the range when the range is made of numbers. A plan replaces the range. */
 const usualText = (ind: Indicator) =>
-  `Usual ${ind.usual}${ind.unit && isNumber(ind.usual.replace(/[–\s/]/g, '')) ? ` ${ind.unit}` : ''}`;
+  ind.refText || `Usual ${ind.usual}${ind.unit && isNumber(ind.usual.replace(/[–\s/]/g, '')) ? ` ${ind.unit}` : ''}`;
+
+/** What changed, in one sentence, for a reading the heart caution flags. */
+function changedText(ind: Indicator): string {
+  const r = rangeInfo(ind);
+  const t = r ? trendWords(ind) : null;
+  const trend = t && t.dir !== 'flat' ? `, ${t.words.toLowerCase()}` : '';
+  if (ind.key === 'ecg' && ind.series && ind.band) {
+    const v = ind.series[ind.series.length - 1];
+    return `Your wearable ECG shows an ST shift of ${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v)} mm, outside your usual ±${ind.band[1]} mm${trend}.`;
+  }
+  if (r && r.side !== 'within') {
+    return `Your ${ind.name.toLowerCase()} is ${ind.value} ${ind.unit}, ${r.side} your usual ${ind.usual} ${ind.unit}${trend}.`;
+  }
+  return 'Outside your usual range.';
+}
 
 
 export function MyHealth({ S, rad, me, sel, setSel, send, go }: Props) {
-  const inds = S.indicators[me] || [];
+  const inds = indicatorsFor(S, me);
   const ordered = orderIndicators(inds);
   const status = myStatus(S, me, inds);
   const heartOn = heartOnFor(S, me);
   const roster = S.emergency ? S.emergency.roster[me] : null;
   const ra = radAlert(rad);
   const storm = stormDose(rad);
-  const done = S.checkin_defs.filter((d) => S.checkins[d.id]).length;
+  const done = checkinsDone(S, me);
   const selected = sel.kind === 'ind' ? inds.find((i) => i.key === sel.key) || ordered[0] : null;
 
   return (
@@ -79,7 +97,7 @@ export function MyHealth({ S, rad, me, sel, setSel, send, go }: Props) {
             {sel.kind !== 'heart' && (
               <div>
                 <Button kind="primary" onClick={() => setSel({ kind: 'heart' })}>
-                  {S.heart!.stage === 'caution' ? 'Open quick check' : 'Open possible heart problem'}
+                  {S.heart!.stage === 'caution' && !S.heart!.quick_check ? 'Open check-in' : 'Open possible heart problem'}
                 </Button>
               </div>
             )}
@@ -217,7 +235,7 @@ export function MyHealth({ S, rad, me, sel, setSel, send, go }: Props) {
             <span>
               <span className="row-title">Today's check-ins</span>
               <span className="row-sub">
-                {done} of {S.checkin_defs.length} done
+                {done} of {CHECKIN_DEFS.length} done
               </span>
             </span>
             <Icon name="chevron_right" className="row-chevron" />
@@ -229,7 +247,7 @@ export function MyHealth({ S, rad, me, sel, setSel, send, go }: Props) {
         {sel.kind === 'heart' && heartOn ? (
           <HeartPanel S={S} send={send} />
         ) : selected ? (
-          <IndicatorDetail key={selected.key} ind={selected} send={send} inCaution={heartOn && selected.state === 'flag'} />
+          <IndicatorDetail key={selected.key} ind={selected} now={S.now} send={send} inCaution={heartOn && selected.state === 'flag'} />
         ) : null}
       </Scroll>
     </div>
@@ -266,24 +284,28 @@ function IndicatorRow({ ind, selected, onOpen }: { ind: Indicator; selected: boo
   );
 }
 
-function IndicatorDetail({ ind, send, inCaution }: { ind: Indicator; send: Props['send']; inCaution: boolean }) {
+function IndicatorDetail({ ind, now, send, inCaution }: { ind: Indicator; now: number; send: Props['send']; inCaution: boolean }) {
   const [graph, setGraph] = useState<'trend' | 'beat'>('trend');
   const flag = ind.state === 'flag';
   const miss = ind.state === 'missing';
-  const src = SRC[ind.src] || SRC.demo;
+  const src = ind.src ? SRC[ind.src] : undefined;
   let changed: string;
   let next: string;
   let who: string;
   if (flag) {
-    changed = CHANGED[ind.key] || 'Outside your usual range.';
+    changed = changedText(ind);
     [next, who] = NEXT[ind.key] || ['Check again later.', 'Crew doctor'];
   } else if (miss && ind.missing === 'not_entered') {
     changed = 'No reading entered today. This is not a warning.';
     next = "Enter today's reading.";
     who = 'Only you';
+  } else if (miss && ind.missing === 'stale') {
+    changed = `Last reading at ${clock(ind.lastAt)}, ${duration(now - (ind.lastAt || now))} ago. Your wearable (Bio-Monitor shirt or watch) is not sending data. Missing data is never counted as usual.`;
+    next = 'Put the shirt or watch on and check that the tablet shows a connection.';
+    who = 'Only you';
   } else if (miss) {
-    changed = 'Your watch is not sending data. Missing data is never counted as usual.';
-    next = 'Put the watch on and check that it shows a connection.';
+    changed = 'Your wearable (Bio-Monitor shirt or watch) is not sending data. Missing data is never counted as usual.';
+    next = 'Put the shirt or watch on and check that the tablet shows a connection.';
     who = 'Only you';
   } else if (ind.preventive) {
     changed = ind.preventive;
@@ -338,9 +360,9 @@ function IndicatorDetail({ ind, send, inCaution }: { ind: Indicator; send: Props
         </div>
       )}
 
-      {miss && ind.missing === 'not_entered' && (
+      {miss && ind.missing === 'not_entered' && ind.entry && (
         <div>
-          <Button kind="primary" size="xl" icon="add" onClick={() => send('checkin', { id: ind.key })}>
+          <Button kind="primary" size="xl" icon="add" onClick={() => send('checkin', { id: ind.entry })}>
             Enter now
           </Button>
         </div>
@@ -373,14 +395,14 @@ function IndicatorDetail({ ind, send, inCaution }: { ind: Indicator; send: Props
       <div className="facts">
         <Fact label="Next step">{next}</Fact>
         <Fact label="Who to tell">{who}</Fact>
-        <Fact label="Why it matters in space" note={`NASA: ${ind.risk}`}>
-          {ind.why} <SourceChip source={src} />
+        <Fact label="Why it matters in space" note={ind.risk ? `NASA: ${ind.risk}` : undefined}>
+          {ind.why} {src && <SourceChip source={src} />}
         </Fact>
         <Fact
           label="How it is measured"
           note={ind.private ? 'Private: the crew doctor sees that you checked in, never your entries.' : undefined}
         >
-          {ind.measured}
+          {ind.measured} {ind.measured_src && SRC[ind.measured_src] && <SourceChip source={SRC[ind.measured_src]} />}
         </Fact>
       </div>
 
@@ -392,6 +414,10 @@ function IndicatorDetail({ ind, send, inCaution }: { ind: Indicator; send: Props
 function HeartPanel({ S, send }: { S: CrewState; send: Props['send'] }) {
   const h = S.heart!;
   const m = h.model;
+  const c = cautionFor(S, 'lena');
+  const question = (c && c.checkIn.question) || CHECK_QUESTION;
+  const then = (q: (typeof QUICK)[number]) => (c && c.checkIn.outcomes[q.word]) || q.then;
+  const asking = h.stage === 'caution' && !h.quick_check;
   return (
     <section className="panel panel-pad detail enter" aria-label="Possible heart problem">
       <header className="detail-head">
@@ -401,14 +427,19 @@ function HeartPanel({ S, send }: { S: CrewState; send: Props['send'] }) {
       </header>
       <p className="detail-lead">{m.summary}</p>
 
-      {h.stage === 'caution' && (
+      {asking && (
         <div className="stack">
-          <h3>Quick check: do you have chest discomfort, pressure or pain right now?</h3>
+          <h3>Check-in: {question}</h3>
+          <p className="muted">
+            {h.unanswered_alerted
+              ? `No answer yet, so the crew doctor was alerted at ${clock(h.unanswered_alerted)}. You can still answer.`
+              : `Please answer by ${clock(h.issued_at + ANSWER_WINDOW_S)}. If there is no answer by then, the crew doctor is alerted.`}
+          </p>
           <div className="answers">
             {QUICK.map((q) => (
               <button key={q.answer} type="button" className="answer" onClick={() => send('quick_check', { answer: q.answer })}>
                 <span className="answer-word">{q.word}</span>
-                <span className="answer-then">{q.then(S.countdown_s)}</span>
+                <span className="answer-then">{then(q)}</span>
               </button>
             ))}
           </div>
@@ -433,11 +464,27 @@ function HeartPanel({ S, send }: { S: CrewState; send: Props['send'] }) {
         </div>
       )}
 
-      {h.stage !== 'caution' && h.stage !== 'countdown' && (
+      {!asking && h.stage !== 'countdown' && (
         <div className="stage-note">
           <p>{HEART_STAGE_TEXT[h.stage] || ''}</p>
-          {h.quick_check && <p className="muted">Your quick check answer: {QUICK_WORD[h.quick_check]}.</p>}
+          {h.quick_check && (
+            <p className="muted">
+              Your answer: {QUICK_WORD[h.quick_check]}
+              {h.answered_at ? ` at ${clock(h.answered_at)}` : ''}.
+            </p>
+          )}
+          {h.quick_check === 'yes' && (
+            <p>
+              <b>{(c && c.checkIn.afterYes) || AFTER_YES}</b>
+            </p>
+          )}
         </div>
+      )}
+
+      {h.seen_at && (
+        <p className="small-line">
+          <Icon name="visibility" /> Sam, the crew doctor, saw this at {clock(h.seen_at)}.
+        </p>
       )}
 
       <div className="reading-row">
@@ -448,7 +495,7 @@ function HeartPanel({ S, send }: { S: CrewState; send: Props['send'] }) {
         ) : (
           <>
             <Button kind="quiet" icon="ecg_heart" onClick={() => send('heart_reading')}>
-              Take a Heart reading
+              Take a heart reading
             </Button>
             <span className="muted">A 12-lead heart tracing from the medical kit. It is the deciding measurement.</span>
           </>

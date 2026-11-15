@@ -3,7 +3,7 @@
 // Team vocabulary is used where the team has agreed a word (docs/ux-06d-information-architecture.md, part E).
 
 import type { IconName } from './icons';
-import type { MissingKind, Outcome, PersonId, QuickAnswer, RosterStatus } from './api';
+import type { EmergencyKind, MissingKind, Outcome, PersonId, QuickAnswer, RosterStatus } from './api';
 
 export const NAMES: Record<PersonId, string> = { lena: 'Lena', sam: 'Sam', ravi: 'Ravi', maya: 'Maya' };
 export const PEOPLE: PersonId[] = ['lena', 'sam', 'ravi', 'maya'];
@@ -43,6 +43,10 @@ export const L = {
   csa: { t: 'Canadian Space Agency: Monitoring Radiation for Astronaut Health (2026)', u: 'https://www.asc-csa.gc.ca/eng/news/articles/2026/2026-02-26-monitoring-radiation-astronaut-health.asp' },
   thygesen: { t: 'Thygesen et al. 2018, Circulation', u: 'https://doi.org/10.1161/CIR.0000000000000617' },
   cdc: { t: 'Centers for Disease Control and Prevention: Acute Radiation Syndrome', u: 'https://www.cdc.gov/radiation-emergencies/hcp/clinical-guidance/ars.html' },
+  bio: { t: 'Canadian Space Agency: Bio-Monitor', u: 'https://www.asc-csa.gc.ca/eng/sciences/bio-monitor.asp' },
+  crew13: { t: 'Canadian Space Agency: Crew-13 science activities (Joshua Kutryk)', u: 'https://www.asc-csa.gc.ca/eng/missions/crew-13/science-activities.asp' },
+  actis: { t: 'Canadian Space Agency: ACTIS, Acute Care Testing in Space', u: 'https://www.asc-csa.gc.ca/eng/sciences/actis.asp' },
+  radin2: { t: 'Canadian Space Agency: Radi-N2', u: 'https://www.asc-csa.gc.ca/eng/sciences/radi-n2.asp' },
 } satisfies Record<string, Link>;
 
 export const SRC: Record<string, Source> = {
@@ -53,9 +57,21 @@ export const SRC: Record<string, Source> = {
   trim: { label: 'Trim 2023', title: 'Blood sugar with inactivity', body: 'In a 60-day bed rest study, daily blood sugar rose 6% and fasting insulin 40%.', links: [L.trim] },
   behav: { label: 'NASA behavioural risk', title: 'Behavioural conditions', body: "Isolation and confinement affect mood, sleep and decisions. NASA's risk page lists no monitoring tool.", links: [L.behav] },
   demo: { label: 'Demo data', simulated: true, title: 'Demo data', body: 'Values for a fictional crew member, shaped by the published in-flight changes cited on each indicator.', links: [] },
-  rule: { label: 'Alert rule', simulated: true, title: 'Screening alert rule (team design)', body: "Fires when the chest strap heart tracing's ST segment stays outside the person's own usual range on 3 consecutive 10-minute averages and resting heart rate is also outside its usual range. A design choice to be tuned with flight data; a chest strap is a screening signal, not diagnostic.", links: [] },
+  rule: { label: 'Alert rule', simulated: true, title: 'Screening alert rule (team design)', body: "Fires when the wearable ECG's ST segment stays outside the person's own usual range on 3 consecutive 10-minute averages and resting heart rate is also outside its usual range. A design choice to be tuned with flight data; a wearable ECG is a screening signal, not diagnostic.", links: [] },
   thygesen: { label: 'Thygesen 2018', title: 'ST-elevation criterion', body: 'Fourth Universal Definition of Myocardial Infarction: new ST elevation at the J point of at least 1 mm in two contiguous leads (higher thresholds in leads V2 to V3), measured on a 12-lead heart tracing. Meeting it indicates possible myocardial infarction (heart attack); diagnosis needs clinical assessment.', links: [L.thygesen] },
-  symptom: { label: 'Quick check', title: 'Reported symptom', body: 'Chest discomfort, pressure or pain, as answered by the crew member in the quick check.', links: [] },
+  symptom: { label: 'Check-in', title: 'Reported symptom', body: 'Chest pain, pressure or discomfort, as answered by the crew member in the check-in.', links: [] },
+  bio: {
+    label: 'CSA Bio-Monitor',
+    title: 'Where the readings come from',
+    body: "Every crew member has a tablet. Continuous readings come from a wearable paired with it: a smartwatch, or the Canadian Space Agency's Bio-Monitor, a smart shirt and headband (Carré Technologies, Montreal) that measure heart rate and electrical heart activity, blood pressure, breathing rate and volume, skin temperature, blood oxygen and movement. It can be worn during sleep and exercise and pairs with a tablet app. First used on the space station by David Saint-Jacques after launching in December 2018, and in use again on Crew-13 by Canadian astronaut Joshua Kutryk. A smartwatch heart tracing is usually single-lead and taken on demand, so continuous monitoring works best with the shirt. Values shown here are demo values, not Bio-Monitor data.",
+    links: [L.bio, L.crew13],
+  },
+  actis: {
+    label: 'CSA ACTIS',
+    title: 'Blood clot test in space',
+    body: 'ACTIS is a portable device the Canadian Space Agency is testing on Crew-13 with Joshua Kutryk. It measures D-dimer, a protein fragment produced when blood clots break down, from a blood sample in about 15 minutes, and can send the result to the ground. A blood clot in the lungs can also cause chest pain, so a normal result helps the crew doctor rule it out. It does not confirm or rule out a heart attack. The result shown here is mock.',
+    links: [L.actis, L.cardio],
+  },
   labs: { label: 'NASA open data', title: 'Real astronaut laboratory results', body: "Inspiration4 crew member C001: blood count (study 569) and metabolic panel (study 575), with the testing laboratory's own normal ranges. Shown as an example laboratory history; not Lena's data.", links: [L.osdr569, L.osdr575] },
   ars: { label: 'Why no symptoms', title: 'Acute radiation sickness threshold', body: 'Acute radiation syndrome usually needs a large whole-body dose received quickly, generally above about 0.7 gray. Doses from a sheltered solar storm are far below that, so vital signs are not expected to change; the concern is the added lifetime (career) dose.', links: [L.cdc] },
   limit: { label: 'NASA standard', title: 'NASA career dose limit', body: "NASA's career effective dose limit for all astronauts is 600 millisieverts (NASA-STD-3001, Volume 1).", links: [] },
@@ -80,17 +96,17 @@ export const INDICATOR_ICON: Record<string, IconName> = {
   glucose: 'glucose',
   mood: 'mood',
   rad: 'flare',
+  exercise: 'directions_run',
+  hydration: 'water_drop',
+  reaction: 'timer',
+  stress: 'psychology',
 };
 
-// What changed and what to do next, for the two indicators the heart scenario flags.
+// What to do next, for the three measures the heart caution flags (crew/engine.py, CAUTION_MEASURES).
 export const NEXT: Record<string, [string, string]> = {
-  ecg: ['Answer the quick check, then take a Heart reading with the 12-lead heart tracing from the medical kit.', 'Crew doctor (already told)'],
-  hr: ['Rest for 10 minutes and let the strap take a new reading.', 'Crew doctor (already told)'],
-};
-
-export const CHANGED: Record<string, string> = {
-  ecg: 'Your chest strap heart tracing shows an ST shift of +0.9 mm, outside your usual ±0.2 mm, rising over the last 6 hours.',
-  hr: 'Your resting heart rate is 68 bpm, above your usual 52–60, rising over the last 6 hours.',
+  ecg: ['Answer the check-in, then take a heart reading with the 12-lead heart tracing from the medical kit.', 'Crew doctor (already told)'],
+  hr: ['Rest for 10 minutes and let the wearable take a new reading.', 'Crew doctor (already told)'],
+  bp: ['Rest, then take a new reading with the cuff, seated quietly.', 'Crew doctor (already told)'],
 };
 
 export const GLOSSARY: Record<string, string> = {
@@ -98,21 +114,29 @@ export const GLOSSARY: Record<string, string> = {
   hr: 'bpm means beats per minute.',
   bp: 'mmHg means millimetres of mercury, the usual unit for blood pressure.',
   glucose: 'mg/dL means milligrams per decilitre of blood.',
+  reaction: 'ms means milliseconds, thousandths of a second.',
 };
 
-// ---------------------------------------------------------------- quick check
+// ---------------------------------------------------------------- check-in (the heart caution's question)
+// Wording from the design file (health-caution.html), as the server sends it in health.<person>.caution.checkIn.
+// These are the fallbacks if it is missing. "Yes" never declares an emergency: the crew doctor decides.
 
-export const QUICK: { answer: QuickAnswer; word: string; then: (countdown: number) => string }[] = [
-  { answer: 'yes', word: 'Yes', then: (n) => `A ${n}-second countdown starts, then the whole crew is alerted. You can stop it.` },
-  { answer: 'unsure', word: 'Not sure', then: () => 'The crew doctor is woken. Nobody else is alerted.' },
-  { answer: 'no', word: 'No', then: () => 'The result is monitored and you check again in 1 hour.' },
+export const CHECK_QUESTION = 'Do you have chest pain, pressure or discomfort?';
+export const ANSWER_WINDOW_S = 180;
+
+export const QUICK: { answer: QuickAnswer; word: string; then: string }[] = [
+  { answer: 'yes', word: 'Yes', then: 'The crew doctor is alerted now and decides what happens next.' },
+  { answer: 'unsure', word: 'Not sure', then: 'Take a heart reading. The crew doctor is also alerted.' },
+  { answer: 'no', word: 'No', then: 'Take a heart reading.' },
 ];
+
+export const AFTER_YES = 'Stay where you are and rest. If the pain gets worse, press SOS.';
 
 export const QUICK_WORD: Record<QuickAnswer, string> = { yes: 'Yes', no: 'No', unsure: 'Not sure' };
 
 export const HEART_STAGE_TEXT: Record<string, string> = {
-  doctor_woken: 'The crew doctor has been woken and is reviewing your result.',
-  monitored: 'Monitored: check again in 1 hour, or sooner if you feel unwell.',
+  doctor_woken: 'The crew doctor has been alerted and decides what happens next.',
+  monitored: 'Take a heart reading. The result is monitored; check again sooner if you feel unwell.',
   confirmed: 'The crew doctor has reviewed your result and will tell you the next step.',
 };
 
@@ -127,6 +151,7 @@ export const ACTION = {
     lena: 'Stop what you are doing. Sit or lie down. Help is coming.',
   } as Record<string, string>,
   spe: 'Go to the storm shelter now.',
+  sosPatient: 'Stay where you are if you can. Help is coming.',
 };
 
 export const ROSTER_WORD: Record<RosterStatus, string> = {
@@ -145,7 +170,7 @@ export const SHELTER_WORD: Record<string, string> = {
 };
 
 /** The next response a person can give, by emergency kind and current status. */
-export function nextResponse(kind: 'heart' | 'spe', status: RosterStatus): [RosterStatus, string] | null {
+export function nextResponse(kind: EmergencyKind, status: RosterStatus): [RosterStatus, string] | null {
   if (kind === 'spe') {
     if (status === 'alerted') return ['acknowledged', "I'm responding"];
     if (status === 'acknowledged') return ['in_shelter', "I'm in the shelter"];
@@ -157,10 +182,21 @@ export function nextResponse(kind: 'heart' | 'spe', status: RosterStatus): [Rost
   return null;
 }
 
-export const RESPONSE_STEPS: Record<'heart' | 'spe', RosterStatus[]> = {
+export const RESPONSE_STEPS: Record<EmergencyKind, RosterStatus[]> = {
   heart: ['alerted', 'acknowledged', 'on_the_way', 'on_scene'],
+  sos: ['alerted', 'acknowledged', 'on_the_way', 'on_scene'],
   spe: ['alerted', 'acknowledged', 'in_shelter'],
 };
+
+/** The step before this person's current one, for "Undo". Null when there is nothing to go back to. */
+export function previousResponse(kind: EmergencyKind, status: RosterStatus): RosterStatus | null {
+  const steps = RESPONSE_STEPS[kind];
+  const i = steps.indexOf(status);
+  return i > 0 ? steps[i - 1] : null;
+}
+
+/** How long the person who pressed SOS has to cancel it as a mistake. */
+export const SOS_CANCEL_S = 10;
 
 export const OUTCOME_WORD: Record<Outcome, string> = {
   not_known: 'Not yet known',
@@ -182,6 +218,7 @@ export const DECISION_WORD: Record<string, string> = {
 export const DISMISS_REASONS = ['Explained by exercise', 'Sensor artefact', 'Known for this person'];
 export const DECIDE_REASONS = ['Symptoms reported', '12-lead criterion met', 'No symptoms, stable', 'Sensor artefact suspected'];
 export const END_REASONS = ['Patient stable, monitoring continues', 'False alarm, readings back in usual range', 'Storm over, dose rate back to usual'];
+export const SOS_END_REASONS = ['Crew member safe, help given', 'SOS pressed by mistake', 'Patient stable, monitoring continues'];
 
 // ---------------------------------------------------------------- laboratory example (real data)
 // Inspiration4 crew member C001, NASA Open Science Data Repository studies 569 and 575.

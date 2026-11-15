@@ -1,7 +1,7 @@
 // Radiation exposure: career dose against NASA's 600 millisievert limit, with measured dose rates
 // and real solar particle events from the team's radiation module.
 
-import type { CrewState, Radiation } from '../api';
+import type { CrewState, NeutronBreakdown, Radiation } from '../api';
 import { DailyBars, DoseProjection, DoseTrack, SplitBar } from '../charts';
 import { L, SRC, type Source } from '../content';
 import { day, dose } from '../format';
@@ -158,7 +158,9 @@ export function RadiationView({ S, rad }: { S: CrewState; rad: Radiation | null 
           </div>
         </section>
 
-        {rad.breakdown && (
+        {rad.breakdown && rad.breakdown.rows ? (
+          <NeutronCard b={rad.breakdown} />
+        ) : rad.breakdown ? (
           <section className="panel panel-pad stack stack--tight" aria-label="Dose by particle type">
             <div className="spread">
               <span>Today's dose by particle type, at the station</span>
@@ -166,8 +168,118 @@ export function RadiationView({ S, rad }: { S: CrewState; rad: Radiation | null 
             </div>
             <SplitBar share={rad.breakdown.neutrons_share} a="Charged particles" b="Neutrons" />
           </section>
-        )}
+        ) : null}
       </Scroll>
     </div>
+  );
+}
+
+// ------------------------------------------------------------------ Canadian neutron measurements
+
+function csaSource(b: NeutronBreakdown): Source {
+  const mean = Math.round((b.neutron_msv_per_day || 0) * 1000);
+  const range = b.range_usv_per_day ? ` (range ${b.range_usv_per_day[0]} to ${b.range_usv_per_day[1]})` : '';
+  return {
+    label: 'CSA Radi-N2',
+    title: 'Canadian neutron measurements on the space station',
+    body: `Radi-N and Radi-N2 bubble detectors (Bubble Technology Industries, Chalk River, Ontario) measured neutron dose on the International Space Station during the missions of Robert Thirsk, Chris Hadfield and David Saint-Jacques. ${b.sessions} week-long sessions, ${b.first} to ${b.last}: ${mean} µSv per day on average${range}. Dataset released by the Canadian Space Agency for the 2019 Space Apps Challenge. ${
+      b.added_to_total
+        ? 'Added to the measured dose, because silicon detectors mostly miss neutrons.'
+        : 'The station total here is the published value of about 0.5 mSv per day, so the Canadian data sets the neutron share.'
+    } Next: the agency's CANS detector will measure neutrons continuously.`,
+    links: [L.radin2, L.csa],
+  };
+}
+
+/** Station dose by particle type, with the neutron part measured by Canadian bubble detectors on three missions. */
+function NeutronCard({ b }: { b: NeutronBreakdown }) {
+  const rows = b.rows || [];
+  const mean = Math.round((b.neutron_msv_per_day || 0) * 1000);
+  const groups: { mission: string; experiment: string; rows: typeof rows }[] = [];
+  rows.forEach((x) => {
+    let g = groups.find((y) => y.mission === x.mission);
+    if (!g) groups.push((g = { mission: x.mission, experiment: x.experiment, rows: [] }));
+    g.rows.push(x);
+  });
+  const W = 280;
+  const H = 52;
+  const max = 250;
+  const X = (v: number) => 10 + (Math.min(v, max) / max) * (W - 20);
+  return (
+    <section className="panel panel-pad stack" aria-label="Dose by particle type, measured by Canadian detectors">
+      <div className="spread">
+        <span>Daily dose by particle type, at the station: neutrons measured by Canadian detectors</span>
+        <SourceChip source={csaSource(b)} />
+      </div>
+      <SplitBar share={b.neutrons_share} a="Charged particles" b="Neutrons" />
+      <div className="n-stats">
+        <div className="n-stat">
+          <span className="label">Neutrons, measured</span>
+          <b>
+            <span className="num">{mean}</span> <span className="unit">µSv per day</span>
+          </b>
+        </div>
+        <div className="n-stat">
+          <span className="label">Charged particles</span>
+          <b>
+            <span className="num">{Math.round((b.charged_msv_per_day || 0) * 1000)}</span> <span className="unit">µSv per day</span>
+          </b>
+        </div>
+        <div className="n-stat">
+          <span className="label">Bubble-detector readings</span>
+          <b>
+            <span className="num">{b.sessions}</span>{' '}
+            <span className="unit">
+              {(b.first || '').slice(0, 4)} to {(b.last || '').slice(0, 4)}
+            </span>
+          </b>
+        </div>
+      </div>
+      <div className="label">Measured on three Canadian missions</div>
+      <ul className="n-missions">
+        {groups.map((g) => {
+          const [who, exp] = g.mission.split(', ');
+          const avg = Math.round(g.rows.reduce((t, x) => t + x.usv_per_day, 0) / g.rows.length);
+          const years = Array.from(new Set(g.rows.map((x) => x.start.slice(0, 4)))).join(' to ');
+          return (
+            <li key={g.mission} className="n-mission">
+              <div className="n-who">
+                <b>{who}</b>
+                <span className="muted">
+                  {exp ? `${exp}, ` : ''}
+                  {years}
+                </span>
+                <span className="n-meta">
+                  <PlainTag>{g.experiment}</PlainTag>
+                  <span>
+                    {g.rows.length} {g.rows.length === 1 ? 'reading' : 'readings'}, average <b className="num">{avg}</b> µSv per day
+                  </span>
+                </span>
+              </div>
+              <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${who}: ${g.rows.length} weekly readings, average ${avg} microsieverts per day`}>
+                <line x1={X(0)} x2={X(max)} y1={20} y2={20} className="n-axis" />
+                <line x1={X(mean)} x2={X(mean)} y1={4} y2={36} className="n-mean" />
+                {g.rows.map((x, i) => (
+                  <circle key={i} cx={X(x.usv_per_day)} cy={20 + (i % 2 ? 6 : -6)} r={6} className="n-dot">
+                    <title>
+                      Week of {x.start}: {x.usv_per_day} µSv per day
+                    </title>
+                  </circle>
+                ))}
+                {[0, 100, 200].map((t) => (
+                  <text key={t} x={X(t)} y={H - 2} textAnchor="middle" className="n-tick">
+                    {t}
+                  </text>
+                ))}
+              </svg>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="muted small">
+        Each dot is one week-long bubble-detector reading. Dashed line: the average of all {b.sessions} readings ({mean} µSv per day). µSv means
+        microsievert, a thousandth of a millisievert.
+      </p>
+    </section>
   );
 }

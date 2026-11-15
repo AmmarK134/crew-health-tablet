@@ -18,7 +18,7 @@ import {
 import { Dock, StatusBar, Strips, tabletLine, type ViewId } from './views/Chrome';
 import { CrewOverview } from './views/Crew';
 import { Cuff } from './views/Cuff';
-import { EmergencyView } from './views/Emergency';
+import { EmergencyView, SosDialog } from './views/Emergency';
 import { MyHealth, type Selection } from './views/MyHealth';
 import { CheckIns, DataSharing, DemoSheet, EarthSheet } from './views/Other';
 import { RadiationView } from './views/Radiation';
@@ -47,6 +47,7 @@ function Tablet() {
   const [sel, setSel] = useState<Selection>({ kind: 'ind', key: '' });
   const [selPerson, setSelPerson] = useState<PersonId>('lena');
   const [sheet, setSheet] = useState<null | 'demo' | 'earth'>(null);
+  const [sosAsk, setSosAsk] = useState(false);
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [size, setSize] = useState<Size>(initialSize);
   const seenEmergency = useRef<number | null>(null);
@@ -55,6 +56,21 @@ function Tablet() {
   useEffect(() => startPolling(), []);
   useEffect(() => applyDisplay(theme, size), [theme, size]);
 
+  // The demo controls are hidden from the tablet screen: D opens and closes them (not while typing).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'd' && e.key !== 'D') return;
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      const t = e.target as HTMLElement | null;
+      const tag = (t && t.tagName ? t.tagName : '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || (t && t.isContentEditable)) return;
+      e.preventDefault();
+      setSheet((v) => (v === 'demo' ? null : 'demo'));
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
   // An emergency opens by itself, over whatever was open. A caution or an advisory never moves the person.
   const emergencyId = S?.emergency?.id ?? null;
   useEffect(() => {
@@ -62,6 +78,7 @@ function Tablet() {
       seenEmergency.current = emergencyId;
       setView('emergency');
       setSheet(null);
+      setSosAsk(false);
     } else if (emergencyId === null) {
       seenEmergency.current = null;
       setView((v) => (v === 'emergency' ? home(me) : v));
@@ -126,7 +143,15 @@ function Tablet() {
 
   return (
     <div className="app" data-view={shown}>
-      <StatusBar S={S} rad={rad} me={me} onLamp={onLamp} onEarth={() => setSheet('earth')} onDemo={() => setSheet('demo')} />
+      <StatusBar
+        S={S}
+        rad={rad}
+        me={me}
+        onLamp={onLamp}
+        onEarth={() => setSheet('earth')}
+        onDemo={() => setSheet('demo')}
+        onSos={() => setSosAsk(true)}
+      />
       <Strips S={S} me={me} view={shown} link={link} actionError={actionError} onEmergency={() => setView('emergency')} />
       <main className="main">
         {shown !== 'emergency' && (
@@ -140,7 +165,7 @@ function Tablet() {
           <CrewOverview S={S} rad={rad} me={me} selPerson={selPerson} setSelPerson={setSelPerson} send={send} go={setView} />
         )}
         {shown === 'health' && <MyHealth S={S} rad={rad} me={me} sel={sel} setSel={setSel} send={send} go={setView} />}
-        {shown === 'checkins' && <CheckIns S={S} send={send} />}
+        {shown === 'checkins' && <CheckIns S={S} me={me} send={send} />}
         {shown === 'radiation' && <RadiationView S={S} rad={rad} />}
         {shown === 'sharing' && <DataSharing S={S} me={me} />}
       </main>
@@ -160,6 +185,17 @@ function Tablet() {
         />
       )}
       {sheet === 'earth' && <EarthSheet S={S} send={send} onClose={() => setSheet(null)} />}
+      {sosAsk && !S.emergency && (
+        <SosDialog
+          me={me}
+          where={S.crew.find((c) => c.id === me)?.where || ''}
+          onClose={() => setSosAsk(false)}
+          onSend={() => {
+            setSosAsk(false);
+            send('sos');
+          }}
+        />
+      )}
     </div>
   );
 }

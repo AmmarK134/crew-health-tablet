@@ -12,11 +12,14 @@ import {
   OUTCOME_WORD,
   RESPONSE_STEPS,
   ROSTER_WORD,
+  SOS_CANCEL_S,
+  SOS_END_REASONS,
   nextResponse,
+  previousResponse,
 } from '../content';
 import { clock, duration } from '../format';
 import { Icon } from '../icons';
-import { canEnd, myAction, stormDose } from '../logic';
+import { canEnd, enderWord, myAction, sosCancelLeft, stormDose } from '../logic';
 import { serverNow, useTick } from '../store';
 import { Button, Dialog, PlainTag, ReasonChips, Scroll, Seg } from '../ui';
 
@@ -32,10 +35,12 @@ export function EmergencyView({ S, rad, me, send }: Props) {
   const isPatient = e.patient === me;
   const mine = e.roster[me];
   const next = isPatient ? null : nextResponse(e.kind, mine);
+  const prev = isPatient ? null : previousResponse(e.kind, mine);
+  const shared = e.kind === 'heart' || e.kind === 'sos';
   const [ending, setEnding] = useState(false);
   const [treatment, setTreatment] = useState(false);
   const who = e.patient ? NAMES[e.patient] : 'Whole crew';
-  const title = isPatient ? 'Your emergency' : e.kind === 'spe' ? 'Emergency: solar particle event' : `Emergency: ${who}, ${e.where}`;
+  const title = isPatient ? (e.kind === 'sos' ? 'Your SOS was sent' : 'Your emergency') : e.kind === 'spe' ? 'Emergency: solar particle event' : `Emergency: ${who}, ${e.where}`;
   const responders = (Object.entries(e.roster) as [PersonId, RosterStatus][]).filter(([, s]) => s !== 'patient');
   const storm = stormDose(rad);
 
@@ -50,7 +55,7 @@ export function EmergencyView({ S, rad, me, send }: Props) {
             {e.kind === 'spe' ? e.detail || e.what : `${e.what}. ${e.detail}.`} Declared {clock(e.declared_at)} by {e.declared_by}.
           </p>
         </div>
-        {e.kind === 'heart' && (
+        {shared && (
           <span className="tag tag--on-alert share-tag">
             <Icon name="share" />
             {isPatient ? 'Your emergency data is shared with the crew' : `${who}'s emergency data is shared`}
@@ -72,7 +77,9 @@ export function EmergencyView({ S, rad, me, send }: Props) {
                 </Button>
               )}
             </div>
+            {e.kind === 'sos' && isPatient && <SosCancel S={S} me={me} send={send} />}
             {!isPatient && (
+              <div className="steps-row">
               <ol className="steps-line" aria-label="Your response so far">
                 {RESPONSE_STEPS[e.kind].map((st, i) => {
                   const at = RESPONSE_STEPS[e.kind].indexOf(mine);
@@ -84,6 +91,12 @@ export function EmergencyView({ S, rad, me, send }: Props) {
                   );
                 })}
               </ol>
+              {prev && (
+                <Button kind="quiet" icon="undo" className="undo-btn" onClick={() => send('respond', { status: prev })}>
+                  Undo “{ROSTER_WORD[mine]}”
+                </Button>
+              )}
+              </div>
             )}
             {isPatient && (
               <div className="facts">
@@ -102,11 +115,15 @@ export function EmergencyView({ S, rad, me, send }: Props) {
                 </div>
                 <div className="fact">
                   <div className="label">What the crew can see about you</div>
-                  <p>Emergency data only: heart indicators, the model result and your location. Not your mood check-ins or journal.</p>
+                  <p>
+                    {e.kind === 'sos'
+                      ? 'Emergency data only: your heart indicators and your location. Not your mood or stress check-ins or journal.'
+                      : 'Emergency data only: heart indicators, the model result and your location. Not your mood check-ins or journal.'}
+                  </p>
                 </div>
               </div>
             )}
-            {e.kind === 'heart' && isPatient && (
+            {shared && isPatient && (
               <p className="small-line">
                 <Icon name="lock" />
                 <span>Emergency data only is shared. Access closes when the emergency ends, and every view is recorded.</span>
@@ -158,9 +175,7 @@ export function EmergencyView({ S, rad, me, send }: Props) {
             <section className="panel panel-pad stack" aria-label="End emergency">
               <div>
                 <h3>End emergency</h3>
-                <p className="muted">
-                  Only the {e.kind === 'heart' ? 'crew doctor' : 'crew doctor or commander'} can end it, with a reason.
-                </p>
+                <p className="muted">Only the {enderWord(S)} can end it, with a reason.</p>
               </div>
               <div>
                 <Button onClick={() => setEnding(true)}>End emergency</Button>
@@ -190,6 +205,8 @@ export function EmergencyView({ S, rad, me, send }: Props) {
 function Checklist({ e, S, send, onTreatment }: { e: Emergency; S: CrewState; send: Props['send']; onTreatment: () => void }) {
   const current = e.checklist.findIndex((s) => !s.result);
   const [drafts, setDrafts] = useState<Record<number, string>>({});
+  // A recorded step can be corrected: the server overwrites the result with the new one, who and when.
+  const [editing, setEditing] = useState<number | null>(null);
   const total = e.checklist.length;
   return (
     <section className="panel" aria-label="First actions">
@@ -214,10 +231,46 @@ function Checklist({ e, S, send, onTreatment }: { e: Emergency; S: CrewState; se
                   {s.role}
                   {isNow ? ', current step' : ''}
                 </p>
-                {s.result && (
-                  <p className="step-result">
-                    Result: {s.result}. Recorded by {s.by} at {clock(s.at)}.
-                  </p>
+                {s.result && editing !== i && (
+                  <div className="step-result-row">
+                    <p className="step-result">
+                      Result: {s.result}. Recorded by {s.by} at {clock(s.at)}.
+                    </p>
+                    <Button
+                      kind="quiet"
+                      icon="edit"
+                      onClick={() => {
+                        setEditing(i);
+                        setDrafts({ ...drafts, [i]: s.result === 'Done' ? '' : s.result || '' });
+                      }}
+                    >
+                      Change
+                    </Button>
+                  </div>
+                )}
+                {s.result && editing === i && (
+                  <div className="step-entry">
+                    <input
+                      className="input"
+                      type="text"
+                      data-autofocus
+                      aria-label={`Corrected result for step ${i + 1}`}
+                      placeholder={s.result_hint ? `Result: ${s.result_hint.toLowerCase()}` : 'Result (optional)'}
+                      value={draft}
+                      onChange={(ev) => setDrafts({ ...drafts, [i]: ev.target.value })}
+                    />
+                    <Button
+                      kind="primary"
+                      onClick={() => {
+                        send('record_step', { index: i, result: draft.trim() || 'Done' });
+                        setDrafts({ ...drafts, [i]: '' });
+                        setEditing(null);
+                      }}
+                    >
+                      Save correction
+                    </Button>
+                    <Button onClick={() => setEditing(null)}>Keep as it was</Button>
+                  </div>
                 )}
                 {isNow && (
                   <div className="step-entry">
@@ -340,9 +393,16 @@ function EndDialog({ e, onClose, send }: { e: Emergency; onClose: () => void; se
           value={reason}
           onChange={(ev) => setReason(ev.target.value)}
         />
-        <ReasonChips options={END_REASONS.filter((r) => (e.kind === 'spe' ? r.startsWith('Storm') : !r.startsWith('Storm')))} value={reason} onPick={setReason} />
+        <ReasonChips
+          options={e.kind === 'sos' ? SOS_END_REASONS : END_REASONS.filter((r) => (e.kind === 'spe' ? r.startsWith('Storm') : !r.startsWith('Storm')))}
+          value={reason}
+          onPick={(r) => {
+            setReason(r);
+            if (e.kind === 'sos' && r === 'SOS pressed by mistake') setOutcome('false_alarm');
+          }}
+        />
       </div>
-      {e.kind === 'heart' && (
+      {e.kind !== 'spe' && (
         <div className="field">
           <span className="label" id="end-outcome">
             Outcome
@@ -368,7 +428,7 @@ function EndDialog({ e, onClose, send }: { e: Emergency; onClose: () => void; se
           size="xl"
           disabled={!ready}
           onClick={() => {
-            send('stand_down', { reason: reason.trim(), outcome: e.kind === 'heart' ? outcome : 'ended' });
+            send('stand_down', { reason: reason.trim(), outcome: e.kind !== 'spe' ? outcome : 'ended' });
             onClose();
           }}
         >
@@ -376,6 +436,60 @@ function EndDialog({ e, onClose, send }: { e: Emergency; onClose: () => void; se
         </Button>
         <Button size="xl" onClick={onClose}>
           Keep active
+        </Button>
+      </div>
+    </Dialog>
+  );
+}
+
+/** The person who pressed SOS can cancel it as a mistake for the first few seconds. It is ended as a
+ *  false alarm with their name, so the record still shows that it happened. */
+function SosCancel({ S, me, send }: { S: CrewState; me: PersonId; send: Props['send'] }) {
+  useTick(250);
+  const left = sosCancelLeft(S, me, serverNow(), SOS_CANCEL_S);
+  if (left <= 0) {
+    return canEnd(S, me) ? null : (
+      <p className="small-line">
+        <Icon name="info" />
+        <span>If this was a mistake, tell the {enderWord(S)}, who can end it with a reason.</span>
+      </p>
+    );
+  }
+  return (
+    <div className="sos-cancel">
+      <Button
+        size="xl"
+        icon="undo"
+        onClick={() =>
+          send('stand_down', { reason: `SOS pressed by mistake, cancelled by ${NAMES[me]}`, outcome: 'false_alarm' })
+        }
+      >
+        Cancel SOS: pressed by mistake
+      </Button>
+      <span className="muted">
+        <span className="num">{Math.ceil(left)}</span> {Math.ceil(left) === 1 ? 'second' : 'seconds'} left to cancel. It is recorded as a false alarm.
+      </span>
+    </div>
+  );
+}
+
+/** Asked once before an SOS goes to the whole crew. The safe choice is on the right, well apart. */
+export function SosDialog({ me, where, onClose, onSend }: { me: PersonId; where: string; onClose: () => void; onSend: () => void }) {
+  return (
+    <Dialog title="Send SOS to the whole crew?" onClose={onClose} small>
+      <p>
+        Every tablet shows an emergency with your name ({NAMES[me]}) and location{where ? ` (${where})` : ''}, and a report goes to Earth
+        automatically.
+      </p>
+      <p className="muted">
+        Pressed by mistake? You can cancel it in the first {SOS_CANCEL_S} seconds.
+      </p>
+      <div className="btn-row btn-row--apart end-actions">
+        <Button kind="danger" size="xl" icon="sos" onClick={onSend}>
+          Send SOS
+        </Button>
+        <Button size="xl" data-autofocus onClick={onClose}>
+          Cancel
         </Button>
       </div>
     </Dialog>

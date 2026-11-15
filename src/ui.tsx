@@ -20,7 +20,7 @@ import { serverNow, useTick } from './store';
 // ------------------------------------------------------------------ buttons
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  kind?: 'primary' | 'secondary' | 'quiet' | 'on-alert';
+  kind?: 'primary' | 'secondary' | 'quiet' | 'on-alert' | 'danger';
   size?: 'standard' | 'xl';
   block?: boolean;
   left?: boolean;

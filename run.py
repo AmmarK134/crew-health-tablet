@@ -109,8 +109,9 @@ def main():
     if backend is None:
         sys.exit(
             "Could not find the team's server (a folder with server.py and crew/engine.py).\n"
-            "Put this crew-tablet folder next to the 'anna' folder, or run:\n"
-            '    python run.py --backend "path\\to\\vitals-atlas-radiation"'
+            "If the 'backend' folder is empty, run:  git submodule update --init\n"
+            "Or point at the server folder:\n"
+            '    python run.py --backend "path/to/vitals-atlas"'
         )
     if not (DIST / "index.html").is_file():
         sys.exit("The built interface is missing (dist/index.html). Run:  npm install  then  npm run build")
@@ -120,12 +121,12 @@ def main():
     try:
         import server  # the team's Flask server, exactly as it is
     except ModuleNotFoundError as err:
-        sys.exit(f"The server needs a Python package that is not installed: {err.name}\nRun:  pip install flask pandas requests")
+        sys.exit(f"The server needs a Python package that is not installed: {err.name}\nRun:  pip install -r backend/requirements.txt")
 
     try:
         from werkzeug.serving import run_simple  # installed together with Flask
     except ModuleNotFoundError:
-        sys.exit("Flask is not installed. Run:  pip install flask pandas requests")
+        sys.exit("Flask is not installed. Run:  pip install -r backend/requirements.txt")
 
     shown = "localhost" if args.host in ("127.0.0.1", "0.0.0.0") else args.host
     base = f"http://{shown}:{args.port}"

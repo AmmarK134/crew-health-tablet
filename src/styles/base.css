@@ -1192,3 +1192,80 @@ button.row:active {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ------------------------------------------------------------------ SOS (status bar, every tablet) */
+/* The one red control outside an alert: it starts an emergency, so it carries the emergency colour.
+   It sits at the far right edge, apart from the alert lamps and the Earth link. */
+.sb-sos {
+  flex: none;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 5.5rem;
+  height: 3.25rem;
+  margin-left: var(--s3);
+  padding: 0 var(--s4);
+  border-radius: var(--radius-control);
+  border: 2px solid var(--emergency-edge);
+  background: var(--emergency);
+  color: var(--emergency-ink);
+  transition: transform var(--fast), filter var(--fast);
+}
+.sb-sos:hover {
+  filter: brightness(1.12);
+}
+.sb-sos:active {
+  transform: scale(0.97);
+}
+.sb-sos-word {
+  font: 750 1.375rem/1 var(--words);
+  letter-spacing: 0.08em;
+}
+
+.btn--danger {
+  background: var(--emergency);
+  border-color: var(--emergency-edge);
+  color: var(--emergency-ink);
+}
+.btn--danger:active {
+  filter: brightness(0.9);
+}
+
+.chip[disabled] {
+  opacity: 0.45;
+}
+.chip .icon {
+  width: 1.375rem;
+  height: 1.375rem;
+}
+
+/* Demo controls: opened with D, or by holding the clock. */
+.sb-cell--day {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.demo-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  color: var(--ink-2);
+}
+.demo-hint .icon {
+  flex: none;
+  width: 1.375rem;
+  height: 1.375rem;
+  margin-top: 0.125rem;
+}
+kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 0 0.4em;
+  border: 1.5px solid var(--edge);
+  border-bottom-width: 3px;
+  border-radius: 0.375rem;
+  font: 600 0.95em/1.4 var(--numbers);
+  text-align: center;
+  color: var(--ink);
+}

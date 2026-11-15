@@ -1,5 +1,6 @@
 // The parts that stay on screen in every view: the status bar, the strips under it, and the dock.
 
+import { useRef } from 'react';
 import type { CrewState, PersonId, Radiation } from '../api';
 import { ACTION, DELAY_LABEL, DELAY_SHORT, MODE_NAME, NAMES, TABLET_ROLE } from '../content';
 import { clock, clockSeconds, duration } from '../format';
@@ -49,10 +50,28 @@ interface StatusBarProps {
   onLamp: (cls: AlertClass) => void;
   onEarth: () => void;
   onDemo: () => void;
+  onSos: () => void;
 }
 
-export function StatusBar({ S, rad, me, onLamp, onEarth, onDemo }: StatusBarProps) {
+/** Holding the clock opens the demo controls on a touch screen, where there is no D key. */
+function useLongPress(onLong: () => void, ms = 2000) {
+  const timer = useRef<number | undefined>(undefined);
+  const stop = () => window.clearTimeout(timer.current);
+  return {
+    onPointerDown: () => {
+      stop();
+      timer.current = window.setTimeout(onLong, ms);
+    },
+    onPointerUp: stop,
+    onPointerLeave: stop,
+    onPointerCancel: stop,
+    onContextMenu: (e: { preventDefault: () => void }) => e.preventDefault(),
+  };
+}
+
+export function StatusBar({ S, rad, me, onLamp, onEarth, onDemo, onSos }: StatusBarProps) {
   const counts = alertCounts(S, rad, me);
+  const hold = useLongPress(onDemo);
   return (
     <header className="statusbar">
       <div className="sb-brand">
@@ -62,7 +81,7 @@ export function StatusBar({ S, rad, me, onLamp, onEarth, onDemo }: StatusBarProp
         <span className="sb-name">Crew Health</span>
         <span className="tag tag--plain">Demo data</span>
       </div>
-      <div className="sb-cell sb-cell--day">
+      <div className="sb-cell sb-cell--day" {...hold}>
         <span className="sb-label">
           {MODE_NAME[S.mode]}, mission day {S.mission_day}
         </span>
@@ -88,15 +107,12 @@ export function StatusBar({ S, rad, me, onLamp, onEarth, onDemo }: StatusBarProp
         <Icon name="satellite_alt" />
         <EarthCell S={S} />
       </button>
-      <button type="button" className="sb-button sb-button--framed" onClick={onDemo} aria-haspopup="dialog">
-        <Icon name="tablet" />
-        <span className="sb-cell">
-          <span className="sb-label">Demo tablet</span>
-          <span className="sb-value">{NAMES[me]}</span>
-        </span>
-        <Icon name="tune" />
-        <span className="sr-only">Open demo controls</span>
-      </button>
+      {!S.emergency && (
+        <button type="button" className="sb-sos" onClick={onSos} aria-haspopup="dialog">
+          <span className="sb-sos-word">SOS</span>
+          <span className="sr-only">: send an emergency to the whole crew</span>
+        </button>
+      )}
     </header>
   );
 }

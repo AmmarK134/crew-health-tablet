@@ -61,7 +61,7 @@ export function personStatus(S: CrewState, rad: Radiation | null, pid: PersonId)
         reason:
           h.model.level === 'criterion_met'
             ? 'Possible heart problem: 12-lead heart tracing meets the ST-elevation criterion'
-            : 'Possible heart problem: chest strap heart tracing changed from usual (screening)',
+            : 'Possible heart problem: wearable ECG changed from usual (screening)',
       };
     }
     if (h.stage === 'monitored') return { rank: 2, kind: 'advisory', reason: 'Monitored: heart screening alert' };
@@ -93,19 +93,24 @@ export function myStatus(S: CrewState, me: PersonId, inds: Indicator[]): MyStatu
     };
   }
   if (S.emergency && S.emergency.patient === me) {
+    if (S.emergency.kind === 'sos') return { kind: 'emergency', title: 'SOS sent: help is coming', detail: 'Stay where you are if you can. The crew has been alerted.' };
     return { kind: 'emergency', title: 'Possible heart attack: help is coming', detail: 'Stay where you are. The crew has been alerted.' };
   }
   if (heartOnFor(S, me)) {
-    return { kind: 'caution', title: 'Possible heart problem: quick check needed', detail: 'A screening signal, not a diagnosis.' };
+    return {
+      kind: 'caution',
+      title: S.heart!.stage === 'caution' && !S.heart!.quick_check ? 'Possible heart problem: please answer the check-in' : 'Possible heart problem',
+      detail: 'A screening signal, not a diagnosis.',
+    };
   }
   if (S.spe_caution) {
     return { kind: 'caution', title: 'Solar particle event: follow ground instructions', detail: 'The ground radiation team directs precautions.' };
   }
-  if (inds.some((i) => i.state === 'missing' && i.missing === 'sensor_off')) {
+  if (inds.some((i) => i.state === 'missing' && (i.missing === 'sensor_off' || i.missing === 'stale'))) {
     return {
       kind: 'missing',
       title: 'Some readings are missing',
-      detail: 'Your watch is not sending data. Missing data is never counted as usual.',
+      detail: 'Your wearable (Bio-Monitor shirt or watch) is not sending data. Missing data is never counted as usual.',
     };
   }
   const off = inds.map((i) => ({ i, r: rangeInfo(i) })).filter((x) => x.r && x.r.side !== 'within');
@@ -151,13 +156,44 @@ export function alertCounts(S: CrewState, rad: Radiation | null, me: PersonId): 
   };
 }
 
-export const canEnd = (S: CrewState, me: PersonId) =>
-  !!S.emergency && ((S.emergency.kind === 'heart' && me === 'sam') || (S.emergency.kind === 'spe' && (me === 'sam' || me === 'maya')));
+/** Who can end an emergency with a reason: the crew doctor; for a storm also the commander;
+ *  for an SOS the commander too when the crew doctor is the one who needs help. */
+export function canEnd(S: CrewState, me: PersonId) {
+  const e = S.emergency;
+  if (!e) return false;
+  if (e.kind === 'spe') return me === 'sam' || me === 'maya';
+  if (e.kind === 'sos') return (me === 'sam' && e.patient !== 'sam') || (me === 'maya' && e.patient === 'sam');
+  return me === 'sam';
+}
+
+export const enderWord = (S: CrewState) => {
+  const e = S.emergency;
+  if (!e) return '';
+  if (e.kind === 'spe') return 'crew doctor or commander';
+  if (e.kind === 'sos' && e.patient === 'sam') return 'commander';
+  return 'crew doctor';
+};
 
 /** What this person should do in the active emergency, in one sentence. */
-export function myAction(S: CrewState, me: PersonId, actions: { heart: Record<string, string>; spe: string }): string {
+export function myAction(
+  S: CrewState,
+  me: PersonId,
+  actions: { heart: Record<string, string>; spe: string; sosPatient: string },
+): string {
   const e = S.emergency;
   if (!e) return '';
   if (e.kind === 'spe') return actions.spe;
+  if (e.kind === 'sos') {
+    if (e.patient === me) return actions.sosPatient;
+    const who = e.patient ? NAMES[e.patient] : 'the crew member';
+    return `Go to ${who} in the ${e.where}.${me === 'sam' ? ' You lead the response.' : ''}`;
+  }
   return e.patient === me ? actions.heart.patient : actions.heart[me] || '';
+}
+
+/** Seconds left for the person who pressed SOS to cancel it as a mistake, or 0. */
+export function sosCancelLeft(S: CrewState, me: PersonId, now: number, window: number): number {
+  const e = S.emergency;
+  if (!e || e.kind !== 'sos' || e.patient !== me) return 0;
+  return Math.max(0, e.declared_at + window - now);
 }
