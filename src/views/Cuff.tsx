@@ -32,6 +32,7 @@ import { Icon, type IconName } from '../icons';
 import { heartOnFor, myAction, myStatus, sosCancelLeft, speOn } from '../logic';
 import { CHECKIN_DEFS, cautionFor, checkinsDone, checkinsFor, indicatorsFor } from '../measures';
 import { rangeInfo } from '../range';
+import { playSound, setSoundEnabled, stopSound, unlockSound, useSound, vibrate } from '../sound';
 import { act, applyDisplay, initialPerson, initialSize, initialTheme, serverNow, startPolling, useShared, useTick } from '../store';
 import { ClassTag } from '../ui';
 
@@ -98,6 +99,7 @@ export function Cuff() {
   useEffect(() => {
     if (key && key !== seen.current) {
       setBuzz(true);
+      vibrate([200, 100, 200]);
       setScreen('alert');
       const t = window.setTimeout(() => setBuzz(false), 900);
       seen.current = key;
@@ -105,6 +107,26 @@ export function Cuff() {
     }
     seen.current = key;
   }, [key]);
+
+  // Lena's alarm: from the moment the heart check-in reaches her watch until she answers it (at most 3 plays).
+  const asking = !!S && me === 'lena' && heartOnFor(S, me) && S.heart!.stage === 'caution' && !S.heart!.quick_check;
+  const askingId = asking ? S!.heart!.id : null;
+  useEffect(() => {
+    if (askingId == null) return;
+    playSound('lena', { times: 3, gap: 4000, onEach: () => vibrate([400, 200, 400, 200, 400]) });
+    return () => stopSound('lena');
+  }, [askingId]);
+
+  // The crew doctor's warning: once each time Sam is alerted (Get crew doctor, a check-in answer of Yes or
+  // Not sure, or no answer within 3 minutes). The quiet advisory before that makes no sound (team rule).
+  const samAlertAt = !!S && me === 'sam' && S.doctor_woken && S.doctor_woken.by !== 'sam' ? S.doctor_woken.at : null;
+  useEffect(() => {
+    if (samAlertAt == null) {
+      stopSound('sam');
+      return;
+    }
+    playSound('sam', { onEach: () => vibrate([300, 150, 300]) });
+  }, [samAlertAt]);
 
   const alertCls = S && S.emergency ? 'emergency' : 'caution';
   const screens: ScreenId[] = [...(key ? (['alert'] as ScreenId[]) : []), 'home', 'vitals', 'sos', 'checkins', 'space'];
@@ -181,6 +203,7 @@ export function Cuff() {
         </div>
         <div className="cuff-strap" aria-hidden="true" />
       </div>
+      <SoundControl />
       <p className="cuff-note">
         {buzz ? 'Vibrating on the wrist. ' : ''}
         Watch concept: swipe, or use the arrows, to change screens. Everything here is also on the tablet, which stays the main device.
@@ -586,6 +609,40 @@ function SpaceScreen({ S, rad }: { S: CrewState; rad: Radiation | null }) {
           <span className="cuff-earth-value">{earth}</span>
         </span>
       </div>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------ sound
+
+/** Browsers play sound only after one tap on the page, so the watch asks for it once, before the demo. */
+function SoundControl() {
+  const snd = useSound();
+  if (!snd.enabled) {
+    return (
+      <button type="button" className="btn btn--secondary cuff-sound" onClick={() => setSoundEnabled(true)}>
+        <Icon name="notifications" />
+        <span>Sound is off: turn it on</span>
+      </button>
+    );
+  }
+  if (!snd.unlocked) {
+    return (
+      <button type="button" className="btn btn--primary cuff-sound" onClick={() => unlockSound()}>
+        <Icon name="notifications" />
+        <span>Turn sound on</span>
+      </button>
+    );
+  }
+  return (
+    <div className="cuff-sound-on">
+      <span>
+        <Icon name="notifications" />
+        Sound on{snd.playing ? ': playing' : ''}
+      </span>
+      <button type="button" className="btn btn--quiet" onClick={() => setSoundEnabled(false)}>
+        Turn off
+      </button>
     </div>
   );
 }

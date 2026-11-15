@@ -15,6 +15,7 @@ import {
   type Size,
   type Theme,
 } from './store';
+import { playSound, stopSound } from './sound';
 import { Dock, StatusBar, Strips, tabletLine, type ViewId } from './views/Chrome';
 import { CrewOverview } from './views/Crew';
 import { Cuff } from './views/Cuff';
@@ -98,6 +99,20 @@ function Tablet() {
       setSel((s) => (s.kind === 'heart' ? { kind: 'ind', key: '' } : s));
     }
   }, [heartId]);
+
+  // The crew doctor's warning sound: once for each time Sam is alerted, on Sam's tablet, including when the demo
+  // switches to Sam's tablet while the alert is open. The quiet advisory before that makes no sound (team rule).
+  const warned = useRef<number | null>(null);
+  const samAlertAt = S && me === 'sam' && !S.emergency && S.doctor_woken && S.doctor_woken.by !== 'sam' ? S.doctor_woken.at : null;
+  useEffect(() => {
+    if (samAlertAt == null) {
+      stopSound('sam'); // the alert is over, or this tablet is no longer Sam's: a waiting warning is dropped
+      return;
+    }
+    if (warned.current === samAlertAt) return;
+    warned.current = samAlertAt;
+    playSound('sam');
+  }, [samAlertAt]);
 
   const send = useCallback((type: string, extra?: Record<string, unknown>) => void act(type, me, extra), [me]);
 

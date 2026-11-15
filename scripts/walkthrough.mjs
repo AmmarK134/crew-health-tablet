@@ -26,7 +26,12 @@ function check(ok, what) {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`);
 }
 
-const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new', args: ['--no-sandbox'] });
+const browser = await puppeteer.launch({
+  executablePath: CHROME,
+  headless: 'new',
+  args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'],
+});
+const sounds = (page) => page.evaluate(() => window.__crewSound || []);
 const errors = [];
 async function tablet(who) {
   const page = await browser.newPage();
@@ -114,6 +119,35 @@ check(S.checkins.lena.stress === true && S.health.lena.measures.stress.readings[
 await tap(lena, 'Get crew doctor');
 S = await state();
 check(S.doctor_woken && S.doctor_woken.by === 'lena', '"Get crew doctor" tells the crew doctor');
+
+// ---- sound: Lena's watch alarm until she answers; Sam's warning when he is alerted, not for the quiet advisory
+await reset(lena);
+const lenaWatch = await browser.newPage();
+await lenaWatch.setViewport({ width: 900, height: 700 });
+lenaWatch.on('pageerror', (e) => errors.push(`lena watch: ${e.message}`));
+await lenaWatch.goto(`${BASE}/?device=cuff&as=lena`, { waitUntil: 'networkidle2' });
+await sleep(600);
+await tap(lenaWatch, 'Turn sound on');
+await startScenario(sam);
+await sleep(2500);
+check((await sounds(lenaWatch)).includes('lena'), "Lena's watch plays her alarm when the heart check-in arrives");
+check(!(await sounds(sam)).includes('sam'), "Sam's tablet stays silent for the quiet advisory");
+await tap(lenaWatch, 'Yes', { exact: true, within: '.cuff-btn' });
+// Chrome holds back sound in a tab that is not showing, so bring Sam's tablet to the front, as in a demo.
+await sam.bringToFront();
+await sleep(2500);
+check((await sounds(lenaWatch)).includes('stop:lena'), "Lena's alarm stops when she answers");
+check((await sounds(sam)).includes('sam'), "Sam's tablet plays the warning once he is alerted");
+await lenaWatch.close();
+// Switching the demo to Sam's tablet while he is alerted plays the warning there.
+await lena.bringToFront();
+await openDemo(lena);
+await tap(lena, 'Sam', { within: '.person-pick' });
+await sleep(2500);
+check((await sounds(lena)).includes('sam'), "switching the demo to Sam's tablet plays the warning");
+await openDemo(lena);
+await tap(lena, 'Lena', { within: '.person-pick' });
+await sleep(800);
 
 // ---- check-in: No, Not sure, Yes (Yes alerts the crew doctor; it never declares an emergency)
 await reset(lena);

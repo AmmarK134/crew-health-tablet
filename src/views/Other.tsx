@@ -7,6 +7,7 @@ import { DELAY_NOTE, DELAY_TEXT, MODE_NAME, NAMES, PEOPLE, TABLET_ROLE } from '.
 import { clock, day } from '../format';
 import { Icon } from '../icons';
 import { CHECKIN_DEFS, checkinsFor } from '../measures';
+import { setSoundEnabled, unlockSound, useSound } from '../sound';
 import { act, loadStorms, type Size, type Theme } from '../store';
 import { Button, ClassTag, PlainTag, Scroll, Seg, Sheet } from '../ui';
 
@@ -357,6 +358,7 @@ export function DemoSheet({ S, me, storms, theme, size, setMe, setTheme, setSize
           ]}
         />
         <p>Large raises text and every button together, for gloves, vibration or tired eyes.</p>
+        <SoundSetting />
       </div>
 
       <div className="sheet-section">
@@ -382,5 +384,27 @@ export function DemoSheet({ S, me, storms, theme, size, setMe, setTheme, setSize
         <p>Every value is for a fictional crew. Treatment detail is mock content. This is not a medical device.</p>
       </div>
     </Sheet>
+  );
+}
+
+function SoundSetting() {
+  const snd = useSound();
+  return (
+    <>
+      <Seg<'on' | 'off'>
+        label="Sound"
+        block
+        value={snd.enabled ? 'on' : 'off'}
+        onChange={(v) => {
+          setSoundEnabled(v === 'on');
+          if (v === 'on') unlockSound();
+        }}
+        options={[
+          { value: 'on', label: 'Sound on', icon: 'notifications' },
+          { value: 'off', label: 'Sound off', icon: 'close' },
+        ]}
+      />
+      <p>Sam's tablet and watch play a warning when the crew doctor is alerted; Lena's watch plays an alarm until she answers the heart check-in. Quiet advisories never make a sound.</p>
+    </>
   );
 }

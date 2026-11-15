@@ -41,6 +41,7 @@ TYPES = {
     ".woff2": "font/woff2",
     ".woff": "font/woff",
     ".txt": "text/plain; charset=utf-8",
+    ".wav": "audio/wav",
     ".map": "application/json; charset=utf-8",
 }
 
@@ -86,10 +87,37 @@ def make_app(backend_app):
         except (OSError, ValueError):
             pass
         data = target.read_bytes()
+        ctype = TYPES.get(target.suffix.lower(), "application/octet-stream")
+        cache = "no-cache" if target.name == "index.html" else "public, max-age=604800"
+        # Browsers ask for sound files in byte ranges (Safari plays them only if ranges are served).
+        rng = environ.get("HTTP_RANGE", "")
+        if rng.startswith("bytes=") and target != index:
+            size = len(data)
+            try:
+                first, last = rng[6:].split(",")[0].strip().split("-")
+                if first == "":
+                    start, end = max(0, size - int(last)), size - 1
+                else:
+                    start, end = int(first), min(int(last) if last else size - 1, size - 1)
+                if start > end or start >= size:
+                    raise ValueError
+            except ValueError:
+                start_response("416 Range Not Satisfiable", [("Content-Range", f"bytes */{size}"), ("Content-Length", "0")])
+                return [b""]
+            part = data[start:end + 1]
+            start_response("206 Partial Content", [
+                ("Content-Type", ctype),
+                ("Content-Length", str(len(part))),
+                ("Content-Range", f"bytes {start}-{end}/{size}"),
+                ("Accept-Ranges", "bytes"),
+                ("Cache-Control", cache),
+            ])
+            return [part]
         headers = [
-            ("Content-Type", TYPES.get(target.suffix.lower(), "application/octet-stream")),
+            ("Content-Type", ctype),
             ("Content-Length", str(len(data))),
-            ("Cache-Control", "no-cache" if target.name == "index.html" else "public, max-age=604800"),
+            ("Accept-Ranges", "bytes"),
+            ("Cache-Control", cache),
         ]
         start_response("200 OK", headers)
         return [data]

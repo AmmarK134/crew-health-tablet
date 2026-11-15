@@ -51,10 +51,12 @@ To open it on a real tablet or phone on the same network: `python run.py --host 
 
 ## A two-minute demo
 
+Before you start: open Lena's watch (`/?device=cuff&as=lena`) in its own tab and tap **Turn sound on**.
+
 1. Open `/?wall=1`. Four quiet tablets.
 2. Press **Start heart scenario**. Lena gets a caution and a check-in: "Do you have chest pain, pressure or discomfort?" Sam gets a quiet advisory. Ravi and Maya see nothing.
-3. On Lena's tablet answer **Yes**. The crew doctor is alerted now and decides; nothing is declared by itself. Lena is told to rest and press SOS if it gets worse.
-4. On Sam's tablet, open Lena's evidence (Lena sees when he has seen it), run the **ACTIS blood clot test**, then **Escalate**. A 10-second countdown runs; let it finish or press **Send now**.
+3. Switch to Lena's watch tab: it shakes and plays her alarm until she answers. Answer **Yes** there or on her tablet. The crew doctor is alerted now and decides; nothing is declared by itself. Lena is told to rest and press SOS if it gets worse.
+4. Switch to Sam's tablet: "a warning has been issued" plays. Open Lena's evidence (Lena sees when he has seen it), run the **ACTIS blood clot test**, then **Escalate**. A 10-second countdown runs; let it finish or press **Send now**.
 5. Every tablet switches to the emergency by itself. Each person sees their own action in the largest type. Tap **I'm responding** on a few, and **Undo** one to show that a mistaken tap can be taken back.
 6. On Sam's tablet record a checklist step (and **Change** it), then look at **Earth**: the report was sent by itself, with the earliest possible reply. "Continue without waiting."
 7. Sam presses **End emergency**, gives a reason and ends it. Every tablet returns to normal. Lena sees that crew access to her data has closed.
@@ -68,6 +70,7 @@ To open it on a real tablet or phone on the same network: `python run.py --host 
 - **Undo in an emergency.** "I'm responding", "On the way", "On scene" and "In the shelter" can each be taken back one step, on the tablet and the watch. A recorded checklist step can be corrected (the server overwrites it with the new result, who and when; it cannot un-record a step).
 - **Demo controls off the screen**: press D, or hold the clock.
 - **The watch** has screens now: Alert (opens by itself and vibrates), Home with Get crew doctor (on Sam's watch: who needs the crew doctor), Vitals against the person's own usual range, SOS held for 3 seconds, one-tap check-ins, and career radiation dose with the Earth link.
+- **Sound.** Lena's watch plays her alarm (and vibrates on an Android phone) when the heart check-in reaches it, repeating up to 3 times until she answers. Sam's tablet and watch play "a warning has been issued" once each time the crew doctor is alerted, including when the demo switches to Sam's tablet while he is alerted. The quiet advisory before that stays silent. Browsers play sound only after one tap on the page, so tap **Turn sound on** under the watch before the demo. Sound can be turned off under Display in the demo controls.
 - **Canadian content**: the CSA Bio-Monitor shirt as the wearable that takes the readings, the CSA Radi-N/Radi-N2 neutron measurements in the station radiation view, and the ACTIS test for the crew doctor. See below.
 
 ## Canadian content and local impact
@@ -95,7 +98,7 @@ The reasons for each design choice, with sources, are in `docs/design-notes.md`.
 
 ## Checks that were run
 
-- `npm run check` taps through every action in a real browser (four tablets and a watch) and checks the server's state after each: 55 checks, all passing on 15 November 2026 against `backend` at `b123126`, on Linux with headless Chrome.
+- `npm run check` taps through every action in a real browser (four tablets and a watch) and checks the server's state after each: 60 checks, all passing on 15 November 2026 against `backend` at `b123126`, on Linux with headless Chrome.
 - An automated accessibility scan (axe-core, WCAG 2.0 to 2.2 levels A and AA) on 10 screens in both themes: no violations. An automated scan cannot prove full conformance.
 - No text is smaller than 16 px. Main actions are at least 56 px high, emergency actions at least 76 px.
 
@@ -122,7 +125,7 @@ npm run build      # rebuilds dist/, which run.py serves
 | `src/views/` | One file per view: My health, Emergency, Crew overview, Radiation exposure, the rest |
 | `src/charts.tsx`, `src/ui.tsx` | Charts and shared controls |
 | `src/styles/tokens.css` | Colours, type and sizes, from the team's style guide |
-| `scripts/walkthrough.mjs` | The 55-check walk-through |
+| `scripts/walkthrough.mjs` | The 60-check walk-through |
 | `docs/design-notes.md` | Design decisions, sources and what is not verified |
 
 ## Credits
