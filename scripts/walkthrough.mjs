@@ -124,31 +124,42 @@ await tap(lena, 'Get crew doctor');
 S = await state();
 check(S.doctor_woken && S.doctor_woken.by === 'lena', '"Get crew doctor" tells the crew doctor');
 
-// ---- sound: Lena's watch alarm until she answers; Sam's warning when he is alerted, not for the quiet advisory
+// ---- sound: Lena's watch alarm while it is on screen and unanswered; Sam's warning once when he is alerted
 await reset(lena);
 const lenaWatch = await browser.newPage();
 await lenaWatch.setViewport({ width: 900, height: 700 });
 lenaWatch.on('pageerror', (e) => errors.push(`lena watch: ${e.message}`));
 await lenaWatch.goto(`${BASE}/?device=cuff&as=lena`, { waitUntil: 'networkidle2' });
 await sleep(600);
-await tap(lenaWatch, 'Turn sound on');
 await startScenario(sam);
+await lenaWatch.bringToFront();
 await sleep(2500);
-check((await sounds(lenaWatch)).includes('lena'), "Lena's watch plays her alarm when the heart check-in arrives");
+const count = (log, name) => log.filter((x) => x === name).length;
+check(count(await sounds(lenaWatch), 'lena') === 1, "Lena's watch plays her alarm as soon as the check-in arrives, with no button");
 check(!(await sounds(sam)).includes('sam'), "Sam's tablet stays silent for the quiet advisory");
+await sam.bringToFront();
+await sleep(800);
+check((await sounds(lenaWatch)).includes('stop:lena'), "leaving Lena's watch tab stops her alarm");
+await lenaWatch.bringToFront();
+await sleep(1500);
+check(count(await sounds(lenaWatch), 'lena') === 2, "coming back to Lena's watch plays her alarm again while she has not answered");
 await tap(lenaWatch, 'Yes', { exact: true, within: '.cuff-btn' });
+await sleep(1200);
+check((await sounds(lenaWatch)).filter((x) => x === 'stop:lena').length === 2, "Lena's alarm stops when she answers");
+await lenaWatch.close();
 // Chrome holds back sound in a tab that is not showing, so bring Sam's tablet to the front, as in a demo.
 await sam.bringToFront();
 await sleep(2500);
-check((await sounds(lenaWatch)).includes('stop:lena'), "Lena's alarm stops when she answers");
-check((await sounds(sam)).includes('sam'), "Sam's tablet plays the warning once he is alerted");
-await lenaWatch.close();
+check(count(await sounds(sam), 'sam') === 1, "Sam's tablet plays the warning once he is alerted");
+await tap(ravi, 'Get crew doctor');
+await sleep(2500);
+check(count(await sounds(sam), 'sam') === 1, "Sam's warning plays only once on his tablet, not again for a later alert");
 // Switching the demo to Sam's tablet while he is alerted plays the warning there.
 await lena.bringToFront();
 await openDemo(lena);
 await tap(lena, 'Sam', { within: '.person-pick' });
 await sleep(2500);
-check((await sounds(lena)).includes('sam'), "switching the demo to Sam's tablet plays the warning");
+check(count(await sounds(lena), 'sam') === 1, "switching the demo to Sam's tablet plays the warning once");
 await openDemo(lena);
 await tap(lena, 'Lena', { within: '.person-pick' });
 await sleep(800);

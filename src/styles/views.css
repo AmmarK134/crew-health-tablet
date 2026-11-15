@@ -1900,32 +1900,6 @@ button.alert--row:active {
   color: #ffffff;
 }
 
-/* Sound on the watch page: one tap before the demo, because browsers play sound only after a tap. */
-.cuff-sound {
-  min-height: 3rem;
-}
-.cuff-sound-on {
-  display: flex;
-  align-items: center;
-  gap: var(--s4);
-  font: var(--t-label);
-  color: var(--ink-2);
-}
-.cuff-sound-on > span {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s2);
-}
-.cuff-sound-on .icon {
-  width: 1.375rem;
-  height: 1.375rem;
-}
-.cuff-sound-on .btn {
-  min-height: 2.75rem;
-  padding: 0.25rem 0.875rem;
-  font-size: 1rem;
-}
-
 /* ------------------------------------------------------------------ mock AI insight */
 .ai {
   display: flex;

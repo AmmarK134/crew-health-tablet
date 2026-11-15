@@ -1,8 +1,9 @@
 // Sounds: Lena's watch alarm, and the crew doctor's warning.
 //
-// Browsers let a page play sound only after someone has tapped it (or pressed a key) at least once. So the
-// first tap or key press anywhere unlocks sound. A sound asked for before that waits, and plays on that tap.
-// Sound can be turned off per browser (watch page, or Display in the demo controls).
+// A sound is played the moment it is asked for. Chrome allows that when sound is allowed for this site
+// (site settings: Sound, Allow) or when the page was reached in the same tab after a click; otherwise it
+// refuses until the page is tapped once, and then the sound plays on that first tap (if it is still wanted).
+// Sound can be turned off per browser under Display in the demo controls.
 
 import { useSyncExternalStore } from 'react';
 
@@ -19,6 +20,10 @@ interface Job {
   gap: number;
   onEach?: () => void;
   timer?: number;
+  /** Refused by the browser: waiting for the first tap. */
+  waiting?: boolean;
+  /** Drop it if the first tap comes later than this (local clock, milliseconds). */
+  until?: number;
 }
 
 export interface SoundState {
@@ -77,12 +82,19 @@ function start(name: SoundName) {
   a.currentTime = 0;
   if (j.onEach) j.onEach();
   played.push(`start:${name}`);
+  j.waiting = false;
   a.play().then(
-    () => played.push(name),
+    () => {
+      played.push(name);
+      if (!state.unlocked) emit({ unlocked: true });
+    },
     (err: Error) => {
       played.push(`refused:${name}:${err && err.name}`);
-      // Not allowed yet: keep the job and try again on the next tap.
-      if (err && err.name === 'NotAllowedError' && state.unlocked) emit({ unlocked: false });
+      // Not allowed yet: keep the job and play it on the first tap.
+      if (err && err.name === 'NotAllowedError' && jobs[name] === j) {
+        j.waiting = true;
+        if (state.unlocked) emit({ unlocked: false });
+      }
     },
   );
 }
@@ -99,16 +111,22 @@ function next(name: SoundName) {
   j.timer = window.setTimeout(() => start(name), j.gap);
 }
 
-/** Called on the first tap or key press: allow sound, and start anything that was waiting. */
+/** Called on every tap or key press: start anything the browser refused, and prime the sounds once. */
 export function unlockSound() {
-  if (state.unlocked) return;
   if (activation() === false) return; // this event does not count as a tap yet (for example a touch still down)
+  NAMES.forEach((n) => {
+    const j = jobs[n];
+    if (j && j.waiting) {
+      if (j.until && Date.now() > j.until) {
+        delete jobs[n];
+        emit();
+      } else start(n);
+    }
+  });
+  if (state.unlocked) return;
   emit({ unlocked: true });
   NAMES.forEach((n) => {
-    if (jobs[n]) {
-      start(n);
-      return;
-    }
+    if (jobs[n]) return;
     // Safari allows an element to play later only if it has played once inside a tap: play it silently now.
     const a = el(n);
     a.muted = true;
@@ -127,15 +145,13 @@ export function unlockSound() {
   });
 }
 
-/** Play a sound, a number of times with a gap between, calling onEach as each one starts (for vibration). */
-export function playSound(name: SoundName, opts: { times?: number; gap?: number; onEach?: () => void } = {}) {
+/** Play a sound now, a number of times with a gap between, calling onEach as each one starts (for vibration).
+ *  maxWait: if the browser refuses until a tap, give up when the tap comes later than this many milliseconds. */
+export function playSound(name: SoundName, opts: { times?: number; gap?: number; onEach?: () => void; maxWait?: number } = {}) {
   stopSound(name);
-  jobs[name] = { left: opts.times ?? 1, gap: opts.gap ?? 3000, onEach: opts.onEach };
+  jobs[name] = { left: opts.times ?? 1, gap: opts.gap ?? 3000, onEach: opts.onEach, until: opts.maxWait ? Date.now() + opts.maxWait : undefined };
   emit();
-  if (state.unlocked || activation()) {
-    if (!state.unlocked) emit({ unlocked: true });
-    start(name);
-  }
+  start(name);
 }
 
 export function stopSound(name: SoundName) {
@@ -184,3 +200,10 @@ export function subscribeSound(l: () => void) {
 export const soundState = () => state;
 
 export const useSound = () => useSyncExternalStore(subscribeSound, soundState);
+
+/** Whether this page is the one showing (not a background tab or a minimised window). */
+function subscribeVisible(l: () => void) {
+  document.addEventListener('visibilitychange', l);
+  return () => document.removeEventListener('visibilitychange', l);
+}
+export const usePageVisible = () => useSyncExternalStore(subscribeVisible, () => document.visibilityState === 'visible');

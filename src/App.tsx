@@ -15,7 +15,7 @@ import {
   type Size,
   type Theme,
 } from './store';
-import { playSound, stopSound } from './sound';
+import { playSound, stopSound, usePageVisible } from './sound';
 import { Dock, StatusBar, Strips, tabletLine, type ViewId } from './views/Chrome';
 import { CrewOverview } from './views/Crew';
 import { Cuff } from './views/Cuff';
@@ -100,19 +100,19 @@ function Tablet() {
     }
   }, [heartId]);
 
-  // The crew doctor's warning sound: once for each time Sam is alerted, on Sam's tablet, including when the demo
-  // switches to Sam's tablet while the alert is open. The quiet advisory before that makes no sound (team rule).
-  const warned = useRef<number | null>(null);
-  const samAlertAt = S && me === 'sam' && !S.emergency && S.doctor_woken && S.doctor_woken.by !== 'sam' ? S.doctor_woken.at : null;
+  // The crew doctor's warning sound: once, the first time Sam's tablet is on screen while he is alerted
+  // (including when the demo switches to Sam's tablet), and never again on this page. It stops if the tab is
+  // left or the tablet is switched to someone else. The quiet advisory before that makes no sound (team rule).
+  const visible = usePageVisible();
+  const warned = useRef(false);
+  const samAlerted = !!S && me === 'sam' && !S.emergency && !!S.doctor_woken && S.doctor_woken.by !== 'sam';
   useEffect(() => {
-    if (samAlertAt == null) {
-      stopSound('sam'); // the alert is over, or this tablet is no longer Sam's: a waiting warning is dropped
-      return;
+    if (samAlerted && visible && !warned.current) {
+      warned.current = true;
+      playSound('sam', { maxWait: 10000 });
     }
-    if (warned.current === samAlertAt) return;
-    warned.current = samAlertAt;
-    playSound('sam');
-  }, [samAlertAt]);
+    if (!visible || me !== 'sam') stopSound('sam');
+  }, [samAlerted, visible, me]);
 
   const send = useCallback((type: string, extra?: Record<string, unknown>) => void act(type, me, extra), [me]);
 

@@ -404,7 +404,11 @@ function SoundSetting() {
           { value: 'off', label: 'Sound off', icon: 'close' },
         ]}
       />
-      <p>Sam's tablet and watch play a warning when the crew doctor is alerted; Lena's watch plays an alarm until she answers the heart check-in. Quiet advisories never make a sound.</p>
+      <p>
+        Lena's watch plays her alarm while the heart check-in waits for an answer and the watch is on screen. Sam's tablet and watch play the
+        warning once when he is alerted. Quiet advisories never make a sound. For sound without a first tap, allow Sound for this site in
+        Chrome's site settings.
+      </p>
     </>
   );
 }

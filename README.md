@@ -51,7 +51,7 @@ To open it on a real tablet or phone on the same network: `python run.py --host 
 
 ## A two-minute demo
 
-Before you start: open Lena's watch (`/?device=cuff&as=lena`) in its own tab and tap **Turn sound on**.
+Before you start: allow sound for `localhost:5050` once (see "Sound with no tap" below), and open Lena's watch (`/?device=cuff&as=lena`) in its own tab.
 
 1. Open `/?wall=1`. Four quiet tablets.
 2. Press **Start heart scenario**. Lena gets a caution and a check-in: "Do you have chest pain, pressure or discomfort?" Sam gets a quiet advisory. Ravi and Maya see nothing.
@@ -70,7 +70,8 @@ Before you start: open Lena's watch (`/?device=cuff&as=lena`) in its own tab and
 - **Undo in an emergency.** "I'm responding", "On the way", "On scene" and "In the shelter" can each be taken back one step, on the tablet and the watch. A recorded checklist step can be corrected (the server overwrites it with the new result, who and when; it cannot un-record a step).
 - **Demo controls off the screen**: press D, or hold the clock.
 - **The watch** has screens now: Alert (opens by itself and vibrates), Home with Get crew doctor (on Sam's watch: who needs the crew doctor), Vitals against the person's own usual range, SOS held for 3 seconds, one-tap check-ins, and career radiation dose with the Earth link.
-- **Sound.** Lena's watch plays her alarm (and vibrates on an Android phone) when the heart check-in reaches it, repeating up to 3 times until she answers. Sam's tablet and watch play "a warning has been issued" once each time the crew doctor is alerted, including when the demo switches to Sam's tablet while he is alerted. The quiet advisory before that stays silent. Browsers play sound only after one tap on the page, so tap **Turn sound on** under the watch before the demo. Sound can be turned off under Display in the demo controls.
+- **Sound.** Lena's watch plays her alarm (and vibrates on an Android phone) as soon as it is on screen with the heart check-in waiting, up to 3 times, and stops when she answers, when you leave the watch tab, or when she swipes away from the alert; coming back plays it again until she answers. Sam's tablet plays "a warning has been issued" **once**, the first time it is on screen while he is alerted (including when the demo switches to Sam), and never again on that page; his watch does the same. The quiet advisory before that stays silent. Sound can be turned off under Display in the demo controls.
+- **Sound with no tap (one-time browser setting).** Chrome blocks sound in a freshly opened tab until it is tapped. Allow it once for this site: open `localhost:5050`, click the icon left of the address, **Site settings**, **Sound: Allow**, then reload. (Safari: Settings, Websites, Auto-Play, localhost, Allow All Auto-Play.) Without it, the sound plays on the first tap instead, or when you reach the page in the same tab after clicking something.
 - **Mock AI insight**, under each crew member's indicators (about their own data) and in the crew doctor's view for each person (a doctor version that never uses mood or stress). A live summary of the week, suggested questions ("What could this lead to?", "Is this normal in space?", "What else could explain this?", "What should I check next?") and a box to type a question. Answers are scripted from the person's demo readings and the sources already in the app, each with its source, in the style of evidence-based clinical assistants. Following the team's rule, it gives no diagnosis and no made-up percentages; asked for one, it explains why. Labelled "Mock AI".
 - **Canadian content**: the CSA Bio-Monitor shirt as the wearable that takes the readings, the CSA Radi-N/Radi-N2 neutron measurements in the station radiation view, and the ACTIS test for the crew doctor. See below.
 
@@ -99,7 +100,7 @@ The reasons for each design choice, with sources, are in `docs/design-notes.md`.
 
 ## Checks that were run
 
-- `npm run check` taps through every action in a real browser (four tablets and a watch) and checks the server's state after each: 64 checks, all passing on 15 November 2026 against `backend` at `b123126`, on Linux with headless Chrome.
+- `npm run check` taps through every action in a real browser (four tablets and a watch) and checks the server's state after each: 67 checks, all passing on 15 November 2026 against `backend` at `b123126`, on Linux with headless Chrome.
 - An automated accessibility scan (axe-core, WCAG 2.0 to 2.2 levels A and AA) on 10 screens in both themes: no violations. An automated scan cannot prove full conformance.
 - No text is smaller than 16 px. Main actions are at least 56 px high, emergency actions at least 76 px.
 
@@ -127,7 +128,7 @@ npm run build      # rebuilds dist/, which run.py serves
 | `src/views/` | One file per view: My health, Emergency, Crew overview, Radiation exposure, the rest |
 | `src/charts.tsx`, `src/ui.tsx` | Charts and shared controls |
 | `src/styles/tokens.css` | Colours, type and sizes, from the team's style guide |
-| `scripts/walkthrough.mjs` | The 64-check walk-through |
+| `scripts/walkthrough.mjs` | The 67-check walk-through |
 | `docs/design-notes.md` | Design decisions, sources and what is not verified |
 
 ## Credits
