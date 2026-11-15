@@ -1,0 +1,173 @@
+/* Design tokens.
+   Colours, type and sizes follow the team's style guide (docs/ux-07-style-guide.md):
+   neutrals and alert classes from section 4, Inter and DM Mono from section 5,
+   touch target sizes from section 8. Where this build departs, docs/design-notes.md says so. */
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../assets/fonts/inter-latin-wght-normal.woff2') format('woff2-variations');
+}
+/* Atkinson Hyperlegible Next for words, as the team's accessible design uses: letter shapes made to be told apart
+   at a glance (l, I and 1; O and 0). Inter stays as the fallback. */
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('../assets/fonts/atkinson-hyperlegible-next-latin-wght-normal.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'DM Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fonts/dm-mono-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'DM Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('../assets/fonts/dm-mono-latin-500-normal.woff2') format('woff2');
+}
+
+:root {
+  --words: 'Atkinson Hyperlegible Next', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --numbers: 'DM Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  /* Spacing steps (style guide SG-39): 4, 8, 12, 16, 24, 32, 48, 64. In rem so "Large" scales them. */
+  --s1: 0.25rem;
+  --s2: 0.5rem;
+  --s3: 0.75rem;
+  --s4: 1rem;
+  --s5: 1.5rem;
+  --s6: 2rem;
+  --s7: 3rem;
+  --s8: 4rem;
+
+  /* Touch targets (style guide SG-41): 15 mm nominal, 20 mm for emergency actions. */
+  --target: 3.5rem; /* 56 px */
+  --target-xl: 4.75rem; /* 76 px */
+
+  /* Type scale (style guide section 5). 1rem is the minimum size anywhere. */
+  --t-display: 500 4.5rem/1 var(--numbers);
+  --t-vital: 500 3rem/3.5rem var(--numbers);
+  --t-h1: 600 1.875rem/2.25rem var(--words);
+  --t-h2: 600 1.5rem/2rem var(--words);
+  --t-glance: 600 1.25rem/1.75rem var(--words);
+  --t-body: 400 1.125rem/1.625rem var(--words);
+  --t-label: 500 1rem/1.375rem var(--words);
+
+  --radius-panel: 0.875rem;
+  --radius-control: 0.75rem;
+  --radius-tag: 0.375rem;
+
+  --fast: 90ms;
+  --move: 200ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Dark is the first theme: the build direction the team member chose ("dark mission control"). */
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #17171b;
+  --panel: #202025;
+  --raised: #2b2b31;
+  --sunken: #121215;
+  --line: #3a3a42;
+  --edge: #959599;
+  --ink: #f6f6f6;
+  --ink-2: #b9b9bb;
+
+  --command: #0e6027;
+  --command-press: #0b4d1f;
+  --command-ink: #ffffff;
+  --command-edge: #47da84;
+  --focus: #47da84;
+
+  --emergency: #b60109;
+  --emergency-ink: #ffffff;
+  --emergency-edge: #ff5c52;
+  --caution: #f1c21b;
+  --caution-ink: #17171b;
+  --caution-edge: #f1c21b;
+  --advisory: #0032a0;
+  --advisory-ink: #ffffff;
+  --advisory-edge: #5cb8ff;
+
+  --stale: #3cd3fe;
+  --stale-fill: rgba(60, 211, 254, 0.13);
+  --band: rgba(246, 246, 246, 0.11);
+
+  /* The reading against the usual range (the team's pill colour rule). Contrast checked: words on each fill 7:1 or more,
+     each icon 4.5:1 or more. Chart marks keep the design's own colours with a black rim. */
+  --within-fill: #163c27;
+  --within-icon: #47da84;
+  --link-fill: #3a3314;
+  --link-icon: #f1c21b;
+  --none-fill: #34343b;
+  --mark-within: #2baa50;
+  --mark-outside: #f1c21b;
+  --mark-rim: #000000;
+  --scrim: rgba(8, 8, 10, 0.66);
+  --shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.5);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f6f6f6;
+  --panel: #ffffff;
+  --raised: #ececee;
+  --sunken: #efeff1;
+  --line: #d6d6da;
+  --edge: #77777a;
+  --ink: #17171b;
+  --ink-2: #58585b;
+
+  --command: #0e6027;
+  --command-press: #0b4d1f;
+  --command-ink: #ffffff;
+  --command-edge: #0e6027;
+  --focus: #0e6027;
+
+  --emergency-edge: #b60109;
+  --caution-edge: #17171b;
+  --advisory-edge: #0032a0;
+
+  --stale: #005f7f;
+  --stale-fill: #9ef0f0;
+  --band: rgba(23, 23, 27, 0.09);
+
+  --within-fill: #defbe6;
+  --within-icon: #0e6027;
+  --link-fill: #fcf4d6;
+  --link-icon: #17171b;
+  --none-fill: #e0e0e0;
+  --scrim: rgba(23, 23, 27, 0.45);
+  --shadow: 0 1.5rem 4rem rgba(23, 23, 27, 0.22);
+}
+
+/* The design is 1280 by 800 at the browser's usual 16 px text. On a larger screen every size grows in
+   step, so the layout stays the designed one instead of spreading out; a smaller screen keeps the usual
+   text size. Sizes in rem follow; hairlines stay hairlines. Past 16:9 the content stays in a centred
+   column (--gutter) while the bars still span the window. */
+:root {
+  --fit: clamp(1rem, min(100vw / 80, 100vh / 50), 2.5rem);
+  --gutter: max(0px, calc((100vw - 90rem) / 2));
+  font-size: var(--fit);
+}
+
+/* "Large" raises type and every touch target together, for gloves, vibration or tired eyes. */
+:root[data-size='large'] {
+  font-size: calc(var(--fit) * 1.125);
+}
+
+/* The four-tablet wall is laid out for 1920 by 1080, so it starts growing only past that. */
+:root[data-page='wall'] {
+  --fit: clamp(1rem, min(100vw / 120, 100vh / 67.5), 2.5rem);
+  --gutter: 0px;
+}
